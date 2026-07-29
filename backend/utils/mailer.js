@@ -28,6 +28,12 @@ function appUrl() {
   return process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5000';
 }
 
+// Public URL of the hosted rooster logo (served from client/public in production).
+// Used by every email header so the brand logo renders consistently across clients.
+function logoUrl() {
+  return `${appUrl()}/dairy-farm-logo-round-512.png`;
+}
+
 function getTransporter() {
   const cfg = smtpConfig();
 
@@ -67,7 +73,7 @@ async function sendVerificationCodeEmail({ to, code, username }) {
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#ffffff;">
       <div style="text-align:center;margin-bottom:24px;">
-        <div style="display:inline-block;width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#0d9488,#059669);color:white;font-size:28px;line-height:56px;font-weight:bold;">🐄</div>
+        <img src="${logoUrl()}" alt="Usman Dairy Farm logo" width="60" height="60" style="display:inline-block;width:60px;height:60px;max-width:100%;border:0;outline:none;text-decoration:none;" />
         <h1 style="margin:12px 0 0;color:#0f172a;font-size:22px;">Usman Dairy Farm</h1>
       </div>
       <p style="color:#334155;font-size:15px;line-height:1.5;">
@@ -93,4 +99,4 @@ async function sendVerificationCodeEmail({ to, code, username }) {
   return sendMail({ to, subject, html, text });
 }
 
-module.exports = { sendMail, sendVerificationCodeEmail, mailConfigured };
+module.exports = { sendMail, sendVerificationCodeEmail, mailConfigured, logoUrl };
