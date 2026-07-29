@@ -1,4 +1,5 @@
 const { Cow, Milk, Expense, Rate, Health, Sale, DailyLog } = require('../db');
+const { logoUrl } = require('../utils/mailer');
 
 async function buildSummaryData(dateStr) {
   const [cows, milkToday, expensesToday, rate, healthAll, salesToday, log] = await Promise.all([
@@ -75,8 +76,17 @@ function renderSummaryHtml(data) {
   return `
   <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 560px; margin: 0 auto; color:#1e293b;">
     <div style="background:#0d9488; padding:20px 24px; border-radius:12px 12px 0 0;">
-      <h1 style="color:#fff; font-size:18px; margin:0;">🐄 Usman Dairy Farm — Daily Summary</h1>
-      <p style="color:#ccfbf1; font-size:13px; margin:4px 0 0;">${escapeHtml(data.date)}</p>
+      <table role="presentation" style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td style="vertical-align:middle; width:56px; padding-right:14px;">
+            <img src="${logoUrl()}" alt="Usman Dairy Farm logo" width="56" height="56" style="display:block; width:56px; height:56px; max-width:56px; border:0; outline:none; text-decoration:none;" />
+          </td>
+          <td style="vertical-align:middle;">
+            <h1 style="color:#fff; font-size:18px; margin:0;">Usman Dairy Farm — Daily Summary</h1>
+            <p style="color:#ccfbf1; font-size:13px; margin:4px 0 0;">${escapeHtml(data.date)}</p>
+          </td>
+        </tr>
+      </table>
     </div>
     <div style="border:1px solid #e2e8f0; border-top:none; border-radius:0 0 12px 12px; padding:24px;">
 
