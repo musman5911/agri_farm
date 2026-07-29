@@ -1,4 +1,4 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-20", "web"]
 run = "npm --prefix backend install && npm --prefix client install --include=dev && npm --prefix client run build && cd backend && NODE_ENV=production npm start"
 
 [[ports]]
@@ -9,3 +9,6 @@ externalPort = 80
 deploymentTarget = "autoscale"
 build = ["sh", "-c", "cd client && npm install --include=dev && npm run build"]
 run = ["sh", "-c", "cd backend && npm install && NODE_ENV=production npm start"]
+
+[nix]
+channel = "stable-25_05"
