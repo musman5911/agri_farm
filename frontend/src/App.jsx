@@ -28,7 +28,12 @@ import {
   ShieldCheck,
   Tag,
   MapPin,
-  Scale
+  Scale,
+  Sun,
+  Moon,
+  BarChart3,
+  HeartPulse,
+  Type
 } from 'lucide-react';
 
 function App() {
@@ -36,7 +41,11 @@ function App() {
   const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'worker');
   const [username, setUsername] = useState(localStorage.getItem('username') || 'Worker');
   
+  // Custom states for theme, tabs, and text settings
   const [view, setView] = useState('dashboard'); 
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [textSize, setTextSize] = useState(localStorage.getItem('text_size') || 'base'); // sm, base, md, lg
+  
   const [crops, setCrops] = useState([]);
   const [finance, setFinance] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -76,6 +85,36 @@ function App() {
   const showAlert = (text, isError = false) => {
     setAlertMsg({ text, isError });
     setTimeout(() => setAlertMsg({ text: '', isError: false }), 4000);
+  };
+
+  // Theme Sync on body
+  useEffect(() => {
+    const root = window.document.body;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+      root.style.backgroundColor = '#070b13';
+    } else {
+      root.classList.add('light');
+      root.classList.remove('dark');
+      root.style.backgroundColor = '#f8fafc';
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Text size configuration helper
+  const textClassMap = {
+    sm: 'text-xs md:text-sm',
+    base: 'text-sm md:text-base',
+    md: 'text-base md:text-lg',
+    lg: 'text-lg md:text-xl'
+  };
+
+  const titleClassMap = {
+    sm: 'text-base md:text-lg font-black',
+    base: 'text-lg md:text-xl font-black',
+    md: 'text-xl md:text-2xl font-black',
+    lg: 'text-2xl md:text-3xl font-black'
   };
 
   useEffect(() => { 
@@ -123,7 +162,6 @@ function App() {
         localStorage.setItem('token', res.data.access_token);
         localStorage.setItem('role', res.data.role);
         
-        // Fetch users to find matching username
         const cleanName = authForm.email.split('@')[0];
         localStorage.setItem('username', cleanName);
 
@@ -133,7 +171,7 @@ function App() {
         showAlert("Welcome back to AgriFarm Command!");
       }
     } catch (err) {
-      showAlert(err.response?.data?.detail || "Authentication failed.", true);
+      showAlert(err.response?.data?.detail || "Authentication failed. Make sure your database is connected.", true);
     } finally {
       setLoading(false);
     }
@@ -288,10 +326,10 @@ function App() {
       const payload = { ...taskForm, status: editingTask ? editingTask.status : 'Pending' };
       if (editingTask) {
         await api.updateTask(editingTask._id, payload);
-        showAlert("Duty roster assignment updated!");
+        showAlert("Care roster assignment updated!");
       } else {
         await api.addTask(payload);
-        showAlert("Task added to duty roster!");
+        showAlert("Task added to health & care roster!");
       }
       setTaskForm({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' });
       setEditingTask(null);
@@ -377,6 +415,11 @@ function App() {
     reader.readAsText(file);
   };
 
+  const handleTextSizeChange = (size) => {
+    setTextSize(size);
+    localStorage.setItem('text_size', size);
+  };
+
   // --- Helper Calculations ---
   const totalIncome = finance.filter(f => f.type === 'income').reduce((sum, item) => sum + item.amount, 0);
   const totalExpense = finance.filter(f => f.type === 'expense').reduce((sum, item) => sum + item.amount, 0);
@@ -394,13 +437,13 @@ function App() {
   const sendWhatsApp = () => {
     const cropSummary = crops.map(c => `${c.name} (${c.status})`).join(', ') || 'None';
     const pendingCount = tasks.filter(t => t.status === 'Pending').length;
-    const msg = `🚜 *AgriFarm Command Report*%0A%0A🌱 *Crops Register:* ${crops.length} total (${cropSummary})%0A💰 *Ledger:* Income $${totalIncome.toLocaleString()} | Expense $${totalExpense.toLocaleString()} (Net: $${netProfit.toLocaleString()})%0A📝 *Worker Roster:* ${pendingCount} pending task assignments.`;
+    const msg = `🚜 *AgriFarm Command Report Summary*%0A%0A🌱 *Crops Register:* ${crops.length} total (${cropSummary})%0A💰 *Ledger:* Income $${totalIncome.toLocaleString()} | Expense $${totalExpense.toLocaleString()} (Net: $${netProfit.toLocaleString()})%0A📝 *Worker Roster:* ${pendingCount} pending task assignments.`;
     window.open(`https://wa.me/?text=${msg}`);
   };
 
   // --- RENDER AUTHENTICATION ---
   if (!token) return (
-    <div className="min-h-screen bg-[#070b13] flex flex-col justify-center items-center px-4">
+    <div className="min-h-screen bg-[#070b13] dark:bg-[#070b13] light:bg-slate-100 flex flex-col justify-center items-center px-4">
       {alertMsg.text && (
         <div className={`mb-6 p-4 rounded-xl shadow-lg border text-sm max-w-sm w-full animate-fade-in ${
           alertMsg.isError ? 'bg-red-950/80 border-red-500 text-red-200' : 'bg-farm-950/80 border-farm-500 text-farm-200'
@@ -489,7 +532,7 @@ function App() {
           setIsRegister(!isRegister);
           setAuthForm({ username: '', email: '', password: '', role: 'worker' });
         }}>
-          {isRegister ? "🔐 Existing Operative? Login" : "🌱 New Worker? Register"}
+          {isRegister ? "🔐 Existing Operative? Login" : "Don't have an account? Sign Up"}
         </p>
       </div>
     </div>
@@ -497,10 +540,14 @@ function App() {
 
   // --- RENDER DASHBOARD ---
   return (
-    <div className="min-h-screen bg-[#070b13] flex flex-col md:flex-row text-slate-100">
+    <div className={`min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${
+      theme === 'dark' ? 'bg-[#070b13] text-slate-100' : 'bg-slate-50 text-slate-800'
+    } ${textClassMap[textSize]}`}>
       
       {/* ─── SIDEBAR ─── */}
-      <aside className="w-full md:w-64 bg-[#0f172a] border-r border-slate-800 flex flex-col justify-between py-6 px-4 shrink-0 shadow-lg">
+      <aside className={`w-full md:w-64 flex flex-col justify-between py-6 px-4 shrink-0 shadow-xl border-r ${
+        theme === 'dark' ? 'bg-[#0f172a] border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+      }`}>
         <div className="space-y-8">
           {/* Logo Brand */}
           <div className="flex items-center gap-3 px-2">
@@ -508,52 +555,72 @@ function App() {
               <Sprout size={24} />
             </div>
             <div>
-              <h1 className="text-lg font-extrabold text-white tracking-tight m-0 p-0 leading-tight">AgriFarm</h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none">Command</p>
+              <h1 className="text-lg font-extrabold tracking-tight m-0 p-0 leading-tight">AgriFarm</h1>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none">Command Center</p>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="space-y-1.5">
+          <nav className="space-y-1">
             <button 
               onClick={() => setView('dashboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                view === 'dashboard' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+                view === 'dashboard' 
+                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
+                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
               }`}
             >
-              <LayoutDashboard size={18} /> Dashboard
+              <LayoutDashboard size={16} /> Dashboard
             </button>
             <button 
               onClick={() => setView('crops')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                view === 'crops' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+                view === 'crops' 
+                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
+                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
               }`}
             >
-              <Sprout size={18} /> Crops Register
+              <Sprout size={16} /> Crops Register
             </button>
             <button 
               onClick={() => setView('finance')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                view === 'finance' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+                view === 'finance' 
+                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
+                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
               }`}
             >
-              <DollarSign size={18} /> Finance Ledger
+              <DollarSign size={16} /> Financial Ledger
             </button>
             <button 
               onClick={() => setView('tasks')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                view === 'tasks' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+                view === 'tasks' 
+                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
+                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
               }`}
             >
-              <CheckSquare size={18} /> Worker Roster
+              <HeartPulse size={16} /> Care & Health
+            </button>
+            <button 
+              onClick={() => setView('summary')}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+                view === 'summary' 
+                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
+                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
+              }`}
+            >
+              <BarChart3 size={16} /> Monthly Summary
             </button>
             <button 
               onClick={() => setView('settings')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                view === 'settings' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
+                view === 'settings' 
+                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
+                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
               }`}
             >
-              <Settings size={18} /> Settings & Admin
+              <Settings size={16} /> Settings & Admin
             </button>
           </nav>
         </div>
@@ -562,18 +629,18 @@ function App() {
         <div className="border-t border-slate-800 pt-4 mt-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-xs font-semibold text-slate-500 capitalize">{userRole} Terminal</p>
-              <p className="text-sm font-bold text-slate-200 truncate max-w-[130px]">{username}</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{userRole} LEVEL</p>
+              <p className="text-xs font-black truncate max-w-[130px]">{username}</p>
             </div>
-            <div className="bg-slate-800 p-2 rounded-lg text-farm-400 border border-slate-700">
+            <div className="bg-slate-800/40 p-2 rounded-lg text-farm-400 border border-slate-700/50">
               <ShieldCheck size={16} />
             </div>
           </div>
           <button 
             onClick={handleLogout}
-            className="w-full py-2.5 bg-red-950/20 hover:bg-red-900/30 text-red-400 border border-red-900/40 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all"
+            className="w-full py-2 bg-red-950/20 hover:bg-red-900/30 text-red-400 border border-red-900/40 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all"
           >
-            <LogOut size={16} /> Logout
+            <LogOut size={14} /> Logout
           </button>
         </div>
       </aside>
@@ -582,28 +649,31 @@ function App() {
       <main className="flex-1 min-w-0 flex flex-col">
         
         {/* Top Header */}
-        <header className="bg-[#0f172a]/40 border-b border-slate-800 py-4 px-6 md:px-8 flex justify-between items-center shrink-0">
+        <header className={`border-b py-4 px-6 md:px-8 flex justify-between items-center shrink-0 transition-colors ${
+          theme === 'dark' ? 'bg-[#0f172a]/40 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-bold text-slate-100 capitalize">{view} Command</h2>
+            <h2 className={`font-black uppercase tracking-wider capitalize ${titleClassMap[textSize]}`}>{view}</h2>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={sendWhatsApp} className="hidden sm:flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold px-4 py-2 rounded-lg transition-transform hover:scale-105">
-              <Send size={14} /> Send WhatsApp Report
+            {/* Theme Toggle Button */}
+            <button 
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className={`p-2.5 rounded-xl border transition-all ${
+                theme === 'dark' 
+                  ? 'bg-slate-800 border-slate-700 text-yellow-400 hover:bg-slate-700' 
+                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+              }`}
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
+            <button onClick={sendWhatsApp} className="hidden sm:flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-transform hover:scale-105 shadow-md">
+              <Send size={14} /> WhatsApp Report
             </button>
           </div>
         </header>
-
-        {/* Floating alerts */}
-        {alertMsg.text && (
-          <div className={`fixed top-6 right-6 z-50 p-4 rounded-xl shadow-2xl border text-sm max-w-sm animate-fade-in-up ${
-            alertMsg.isError ? 'bg-red-950 border-red-500 text-red-200' : 'bg-farm-950 border-farm-500 text-farm-200'
-          }`}>
-            <div className="flex items-center gap-3">
-              {alertMsg.isError ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
-              <span>{alertMsg.text}</span>
-            </div>
-          </div>
-        )}
 
         {/* Dynamic Content Views */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8">
@@ -611,61 +681,73 @@ function App() {
           {/* ───────────────── VIEW: DASHBOARD ───────────────── */}
           {view === 'dashboard' && (
             <div className="space-y-8 animate-fade-in">
-              <div className="bg-gradient-to-r from-farm-900/30 via-slate-900 to-slate-900 border border-farm-500/20 p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className={`p-6 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
+                theme === 'dark' 
+                  ? 'bg-gradient-to-r from-farm-900/20 via-slate-900 to-slate-900 border-farm-500/20' 
+                  : 'bg-gradient-to-r from-farm-50 via-white to-white border-farm-200'
+              }`}>
                 <div>
-                  <h2 className="text-2xl font-black text-white leading-tight">Welcome to Operative Command, {username}!</h2>
-                  <p className="text-slate-400 text-sm mt-1">Real-time agricultural telemetry, crop cycles, and duty rosters are fully initialized.</p>
+                  <h2 className="text-xl md:text-2xl font-black leading-tight">Welcome to Command Center, {username}!</h2>
+                  <p className="text-slate-400 text-xs mt-1">Telemetry registers, agricultural ledger boards, and worker rosters are successfully synced.</p>
                 </div>
-                <span className="bg-farm-900/40 text-farm-300 border border-farm-500/20 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                  <ShieldCheck size={14} /> Systems Operational
+                <span className="bg-farm-900/40 text-farm-300 border border-farm-500/20 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 shrink-0">
+                  <ShieldCheck size={14} /> Core Operations Online
                 </span>
               </div>
 
               {/* Status Grid Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm">
+                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
                   <div>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Crops Planted</p>
-                    <p className="text-3xl font-extrabold text-white mt-1">{crops.length}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{crops.filter(c => c.status === 'Growing').length} Currently Growing</p>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Crops Planted</p>
+                    <p className="text-2xl md:text-3xl font-black mt-1">{crops.length}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{crops.filter(c => c.status === 'Growing').length} Growing phase</p>
                   </div>
-                  <div className="bg-farm-950 text-farm-400 p-3 rounded-xl border border-farm-900">
-                    <Sprout size={24} />
+                  <div className="bg-farm-950 text-farm-400 p-3 rounded-xl border border-farm-900/30">
+                    <Sprout size={22} />
                   </div>
                 </div>
 
-                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm">
+                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
                   <div>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Operational Profit</p>
-                    <p className={`text-3xl font-extrabold mt-1 ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Ledger Net Profit</p>
+                    <p className={`text-2xl md:text-3xl font-black mt-1 ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
                       ${netProfit.toLocaleString()}
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-1">Income vs Expense ledger</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Inflow vs Expense ledger</p>
                   </div>
-                  <div className={`p-3 rounded-xl border ${netProfit >= 0 ? 'bg-farm-950 text-farm-400 border-farm-900' : 'bg-red-950/40 text-red-400 border-red-900/40'}`}>
-                    {netProfit >= 0 ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
-                  </div>
-                </div>
-
-                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm">
-                  <div>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Pending Duties</p>
-                    <p className="text-3xl font-extrabold text-white mt-1">{tasks.filter(t => t.status === 'Pending').length}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{tasks.filter(t => t.status === 'Completed').length} Completed tasks</p>
-                  </div>
-                  <div className="bg-indigo-950 text-indigo-400 p-3 rounded-xl border border-indigo-900/50">
-                    <CheckSquare size={24} />
+                  <div className={`p-3 rounded-xl border ${netProfit >= 0 ? 'bg-farm-950 text-farm-400 border-farm-900/30' : 'bg-red-950/40 text-red-400 border-red-900/20'}`}>
+                    {netProfit >= 0 ? <TrendingUp size={22} /> : <TrendingDown size={22} />}
                   </div>
                 </div>
 
-                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm">
+                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
                   <div>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Farm Workers</p>
-                    <p className="text-3xl font-extrabold text-white mt-1">{users.length || 1}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">Authorized farm operatives</p>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Care roster</p>
+                    <p className="text-2xl md:text-3xl font-black mt-1">{tasks.filter(t => t.status === 'Pending').length}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{tasks.filter(t => t.status === 'Completed').length} Duties completed</p>
                   </div>
-                  <div className="bg-teal-950 text-teal-400 p-3 rounded-xl border border-teal-900/50">
-                    <Users size={24} />
+                  <div className="bg-indigo-950 text-indigo-400 p-3 rounded-xl border border-indigo-900/30">
+                    <CheckSquare size={22} />
+                  </div>
+                </div>
+
+                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <div>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Operatives</p>
+                    <p className="text-2xl md:text-3xl font-black mt-1">{users.length || 1}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Active worker log registries</p>
+                  </div>
+                  <div className="bg-teal-950 text-teal-400 p-3 rounded-xl border border-teal-900/30">
+                    <Users size={22} />
                   </div>
                 </div>
               </div>
@@ -674,22 +756,24 @@ function App() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* Active crops preview card */}
-                <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl shadow-md">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
-                    <h4 className="font-bold text-white flex items-center gap-2"><Sprout size={18} className="text-farm-400" /> Active Sectors</h4>
-                    <button onClick={() => setView('crops')} className="text-xs text-farm-400 hover:text-farm-300 font-bold uppercase tracking-wider">View All</button>
+                <div className={`border p-6 rounded-2xl shadow-md ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-4 mb-4">
+                    <h4 className="font-bold flex items-center gap-2"><Sprout size={18} className="text-farm-400" /> Planted Sectors</h4>
+                    <button onClick={() => setView('crops')} className="text-xs text-farm-500 hover:text-farm-400 font-bold uppercase tracking-wider">View All</button>
                   </div>
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                     {crops.length === 0 ? (
-                      <p className="text-slate-500 text-sm text-center py-8">No active crops logged.</p>
+                      <p className="text-slate-500 text-xs text-center py-8">No crops currently registered.</p>
                     ) : crops.slice(0, 4).map(c => (
-                      <div key={c._id} className="flex justify-between items-center p-3 rounded-xl bg-slate-900/40 border border-slate-800">
+                      <div key={c._id} className="flex justify-between items-center p-3 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800">
                         <div>
-                          <p className="text-sm font-bold text-white">{c.name}</p>
-                          <p className="text-xs text-slate-500">Field: {c.field || 'N/A'}</p>
+                          <p className="text-xs font-extrabold">{c.name}</p>
+                          <p className="text-[10px] text-slate-500">Plot location: {c.field || 'General'}</p>
                         </div>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                          c.status === 'Growing' ? 'bg-farm-900/40 text-farm-300 border border-farm-500/20' : 'bg-[#1e1e2d] text-indigo-400 border border-indigo-900/50'
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                          c.status === 'Growing' ? 'bg-farm-900/20 text-farm-400 border border-farm-900/30' : 'bg-indigo-950 text-indigo-400 border border-indigo-900/30'
                         }`}>{c.status}</span>
                       </div>
                     ))}
@@ -697,25 +781,27 @@ function App() {
                 </div>
 
                 {/* Duty board preview card */}
-                <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl shadow-md">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
-                    <h4 className="font-bold text-white flex items-center gap-2"><CheckSquare size={18} className="text-farm-400" /> Duty Roster Summary</h4>
-                    <button onClick={() => setView('tasks')} className="text-xs text-farm-400 hover:text-farm-300 font-bold uppercase tracking-wider">Open Board</button>
+                <div className={`border p-6 rounded-2xl shadow-md ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-4 mb-4">
+                    <h4 className="font-bold flex items-center gap-2"><HeartPulse size={18} className="text-farm-400" /> Active Care Roster</h4>
+                    <button onClick={() => setView('tasks')} className="text-xs text-farm-500 hover:text-farm-400 font-bold uppercase tracking-wider">Open Portal</button>
                   </div>
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                     {tasks.length === 0 ? (
-                      <p className="text-slate-500 text-sm text-center py-8">Duty roster is currently empty.</p>
+                      <p className="text-slate-500 text-xs text-center py-8">Roster is empty. No care tasks assigned.</p>
                     ) : tasks.filter(t => t.status !== 'Completed').slice(0, 4).map(t => (
-                      <div key={t._id} className="flex justify-between items-center p-3 rounded-xl bg-slate-900/40 border border-slate-800">
+                      <div key={t._id} className="flex justify-between items-center p-3 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800">
                         <div className="flex items-center gap-3">
-                          <Circle size={16} className="text-slate-600 shrink-0" />
+                          <Circle size={14} className="text-slate-500 shrink-0" />
                           <div>
-                            <p className="text-sm font-bold text-white">{t.title}</p>
-                            <p className="text-xs text-slate-500">Assignee: {t.assigned_to || 'General'}</p>
+                            <p className="text-xs font-extrabold">{t.title}</p>
+                            <p className="text-[10px] text-slate-500">Assigned worker: {t.assigned_to || 'Broadcast'}</p>
                           </div>
                         </div>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                          t.priority === 'High' ? 'bg-red-950/40 text-red-400 border border-red-900/20' : 'bg-slate-800 text-slate-400'
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                          t.priority === 'High' ? 'bg-red-950 text-red-400 border border-red-900/20' : 'bg-slate-800 text-slate-400'
                         }`}>{t.priority}</span>
                       </div>
                     ))}
@@ -728,14 +814,18 @@ function App() {
           {/* ───────────────── VIEW: CROPS REGISTER ───────────────── */}
           {view === 'crops' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
+              <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-5 ${
+                theme === 'dark' ? 'border-slate-800' : 'border-slate-200'
+              }`}>
                 <div>
-                  <h3 className="text-lg font-extrabold text-white">Sectors & Crop Inventory</h3>
-                  <p className="text-slate-500 text-xs">Register, track development phases, variety classifications, and harvest yields.</p>
+                  <h3 className="text-lg font-black">Crops & Sector Register</h3>
+                  <p className="text-slate-500 text-xs">Analyze crop classification variety, field locations, yields, and cycles.</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <select 
-                    className="bg-[#0f172a] border border-slate-800 text-slate-300 rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500"
+                    className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 ${
+                      theme === 'dark' ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                    }`}
                     value={cropFilter}
                     onChange={e => setCropFilter(e.target.value)}
                   >
@@ -747,9 +837,9 @@ function App() {
                   </select>
                   <button 
                     onClick={() => { setEditingCrop(null); setCropForm({ name: '', variety: '', status: 'Growing', plant_date: '', harvest_date: '', field: '', yield_kg: '', notes: '' }); setShowCropModal(true); }}
-                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto"
+                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto shrink-0"
                   >
-                    <Plus size={16} /> Log New Crop
+                    <Plus size={16} /> Log Crop
                   </button>
                 </div>
               </div>
@@ -757,24 +847,30 @@ function App() {
               {/* Crops Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {crops.length === 0 ? (
-                  <div className="col-span-full bg-[#0f172a] border border-slate-800 py-12 rounded-2xl text-center text-slate-500">
+                  <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
+                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  }`}>
                     No crops logged. Get started by planting your first crop.
                   </div>
                 ) : filteredCrops.length === 0 ? (
-                  <div className="col-span-full bg-[#0f172a] border border-slate-800 py-12 rounded-2xl text-center text-slate-500">
+                  <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
+                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  }`}>
                     No crops matching this phase filter were found.
                   </div>
                 ) : filteredCrops.map((c, idx) => (
-                  <div key={c._id} className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-md hover:border-slate-700 transition-all flex flex-col justify-between animate-fade-in" style={{animationDelay: `${idx * 0.05}s`}}>
+                  <div key={c._id} className={`border rounded-2xl p-5 shadow-md hover:border-slate-500/40 transition-all flex flex-col justify-between animate-fade-in ${
+                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  }`} style={{animationDelay: `${idx * 0.05}s`}}>
                     <div className="space-y-4">
                       {/* Name & Badge */}
                       <div className="flex justify-between items-start gap-2">
                         <div>
-                          <h4 className="font-extrabold text-white text-lg tracking-tight">{c.name}</h4>
-                          <p className="text-xs text-slate-500 font-medium">Variety: {c.variety || 'Standard'}</p>
+                          <h4 className="font-extrabold text-white dark:text-white light:text-slate-900 text-sm md:text-base tracking-tight">{c.name}</h4>
+                          <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Variety: {c.variety || 'Standard'}</p>
                         </div>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                          c.status === 'Growing' ? 'bg-farm-900/40 text-farm-300 border border-farm-500/20' :
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                          c.status === 'Growing' ? 'bg-farm-900/30 text-farm-400 border border-farm-900/30' :
                           c.status === 'Harvesting' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/20' :
                           c.status === 'Completed' ? 'bg-purple-950/40 text-purple-400 border border-purple-900/20' :
                           'bg-slate-800 text-slate-400'
@@ -782,39 +878,41 @@ function App() {
                       </div>
 
                       {/* Info grid */}
-                      <div className="grid grid-cols-2 gap-3 text-xs border-y border-slate-800 py-3">
+                      <div className="grid grid-cols-2 gap-3 text-[11px] border-y border-slate-800/10 dark:border-slate-800 py-3">
                         <div className="space-y-1">
                           <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><MapPin size={10} /> Field/Area</p>
-                          <p className="text-slate-300 font-semibold">{c.field || 'Farm-wide'}</p>
+                          <p className="font-semibold">{c.field || 'Farm-wide'}</p>
                         </div>
                         <div className="space-y-1">
-                          <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><Scale size={10} /> Harvested Yield</p>
-                          <p className="text-slate-300 font-semibold">{c.yield_kg ? `${c.yield_kg.toLocaleString()} kg` : '-'}</p>
+                          <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><Scale size={10} /> Yield harvested</p>
+                          <p className="font-semibold">{c.yield_kg ? `${c.yield_kg.toLocaleString()} kg` : '-'}</p>
                         </div>
                         <div className="space-y-1">
                           <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><Calendar size={10} /> Planted</p>
-                          <p className="text-slate-300 font-semibold">{c.plant_date || '-'}</p>
+                          <p className="font-semibold">{c.plant_date || '-'}</p>
                         </div>
                         <div className="space-y-1">
                           <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><Calendar size={10} /> Harvest Target</p>
-                          <p className="text-slate-300 font-semibold">{c.harvest_date || '-'}</p>
+                          <p className="font-semibold">{c.harvest_date || '-'}</p>
                         </div>
                       </div>
 
                       {c.notes && (
-                        <p className="text-xs text-slate-400 line-clamp-2 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800">
+                        <p className={`text-[11px] line-clamp-2 p-2.5 rounded-lg border ${
+                          theme === 'dark' ? 'text-slate-400 bg-slate-900/40 border-slate-800' : 'text-slate-600 bg-slate-50 border-slate-200'
+                        }`}>
                           {c.notes}
                         </p>
                       )}
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="flex justify-end gap-1.5 mt-5 pt-3 border-t border-slate-800">
-                      <button onClick={() => handleEditCrop(c)} className="p-1.5 text-slate-400 hover:text-farm-400 hover:bg-slate-800 rounded-lg transition-colors">
-                        <Edit3 size={15} />
+                    <div className="flex justify-end gap-1.5 mt-5 pt-3 border-t border-slate-800/10 dark:border-slate-800">
+                      <button onClick={() => handleEditCrop(c)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg transition-colors">
+                        <Edit3 size={14} />
                       </button>
-                      <button onClick={() => handleDeleteCrop(c._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors">
-                        <Trash2 size={15} />
+                      <button onClick={() => handleDeleteCrop(c._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
@@ -826,24 +924,28 @@ function App() {
           {/* ───────────────── VIEW: FINANCIAL LEDGER ───────────────── */}
           {view === 'finance' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
+              <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-5 ${
+                theme === 'dark' ? 'border-slate-800' : 'border-slate-200'
+              }`}>
                 <div>
-                  <h3 className="text-lg font-extrabold text-white">Financial Ledger</h3>
-                  <p className="text-slate-500 text-xs">Complete bookkeeping for agricultural inputs, crop sales, operational expenses, and profitability analyses.</p>
+                  <h3 className="text-lg font-black">Financial Ledger</h3>
+                  <p className="text-slate-500 text-xs">Complete bookkeeping for crop seeds, fertilizers, tractor fuels, worker wages, and harvests.</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <select 
-                    className="bg-[#0f172a] border border-slate-800 text-slate-300 rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500"
+                    className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 ${
+                      theme === 'dark' ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                    }`}
                     value={financeFilter}
                     onChange={e => setFinanceFilter(e.target.value)}
                   >
-                    <option value="all">All Logs</option>
-                    <option value="income">Income Only</option>
+                    <option value="all">All Flows</option>
+                    <option value="income">Revenue Only</option>
                     <option value="expense">Expense Only</option>
                   </select>
                   <button 
                     onClick={() => { setEditingFinance(null); setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' }); setShowFinanceModal(true); }}
-                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto"
+                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto shrink-0"
                   >
                     <Plus size={16} /> Log Entry
                   </button>
@@ -852,16 +954,22 @@ function App() {
 
               {/* Financial Breakdown Panel */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-sm">
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Total Gross Income</p>
+                <div className={`border p-5 rounded-2xl shadow-sm ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Gross Revenue</p>
                   <h4 className="text-2xl font-black text-farm-400 mt-1">${totalIncome.toLocaleString()}</h4>
                 </div>
-                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-sm">
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Total Operational Expenditures</p>
+                <div className={`border p-5 rounded-2xl shadow-sm ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Expenditures</p>
                   <h4 className="text-2xl font-black text-red-400 mt-1">${totalExpense.toLocaleString()}</h4>
                 </div>
-                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-sm">
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Net Operations Margin</p>
+                <div className={`border p-5 rounded-2xl shadow-sm ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Net Operations profit</p>
                   <h4 className={`text-2xl font-black mt-1 ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
                     ${netProfit.toLocaleString()}
                   </h4>
@@ -869,10 +977,14 @@ function App() {
               </div>
 
               {/* Finance list table */}
-              <div className="bg-[#0f172a] border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+              <div className={`border rounded-2xl overflow-hidden shadow-md ${
+                theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+              }`}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-[#121b2d] text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-800">
+                    <thead className={`text-slate-500 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b ${
+                      theme === 'dark' ? 'bg-[#121b2d] border-slate-800' : 'bg-slate-50 border-slate-200'
+                    }`}>
                       <tr>
                         <th className="px-6 py-4">Date</th>
                         <th className="px-6 py-4">Description</th>
@@ -881,7 +993,9 @@ function App() {
                         <th className="px-6 py-4 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800 text-sm">
+                    <tbody className={`divide-y text-xs md:text-sm ${
+                      theme === 'dark' ? 'divide-slate-800' : 'divide-slate-200'
+                    }`}>
                       {finance.length === 0 ? (
                         <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">Financial ledger contains no logs.</td></tr>
                       ) : filteredFinance.length === 0 ? (
@@ -889,19 +1003,19 @@ function App() {
                       ) : filteredFinance.map(f => {
                         const linkedCrop = crops.find(c => c._id === f.crop_id);
                         return (
-                        <tr key={f._id} className="hover:bg-slate-900/30 transition-colors">
-                          <td className="px-6 py-4 text-slate-400 whitespace-nowrap">{f.date}</td>
+                        <tr key={f._id} className="hover:bg-slate-800/10 dark:hover:bg-slate-900/30 transition-colors">
+                          <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{f.date}</td>
                           <td className="px-6 py-4">
-                            <div className="font-bold text-white">{f.category}</div>
-                            {f.notes && <div className="text-xs text-slate-500 max-w-xs truncate">{f.notes}</div>}
+                            <div className="font-bold">{f.category}</div>
+                            {f.notes && <div className="text-[11px] text-slate-400 max-w-xs truncate">{f.notes}</div>}
                           </td>
                           <td className="px-6 py-4">
                             {linkedCrop ? (
-                              <span className="inline-flex items-center gap-1.5 bg-farm-950 text-farm-300 border border-farm-900 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                              <span className="inline-flex items-center gap-1.5 bg-farm-900/20 text-farm-400 border border-farm-900/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
                                 <Sprout size={10} /> {linkedCrop.name}
                               </span>
                             ) : (
-                              <span className="text-slate-500 text-xs">Farm-wide</span>
+                              <span className="text-slate-400 text-xs">Farm-wide</span>
                             )}
                           </td>
                           <td className={`px-6 py-4 text-right font-extrabold whitespace-nowrap ${f.type === 'expense' ? 'text-red-400' : 'text-farm-400'}`}>
@@ -912,11 +1026,11 @@ function App() {
                           </td>
                           <td className="px-6 py-4 text-right whitespace-nowrap">
                             <div className="inline-flex gap-1">
-                              <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-400 hover:text-farm-400 hover:bg-slate-800 rounded-lg">
-                                <Edit3 size={15} />
+                              <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg">
+                                <Edit3 size={14} />
                               </button>
-                              <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg">
-                                <Trash2 size={15} />
+                              <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg">
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </td>
@@ -930,29 +1044,33 @@ function App() {
             </div>
           )}
 
-          {/* ───────────────── VIEW: WORKER ROSTER & TASKS ───────────────── */}
+          {/* ───────────────── VIEW: CARE & HEALTH PORTAL ───────────────── */}
           {view === 'tasks' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
+              <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-5 ${
+                theme === 'dark' ? 'border-slate-800' : 'border-slate-200'
+              }`}>
                 <div>
-                  <h3 className="text-lg font-extrabold text-white">Worker Tasks & Assignments</h3>
-                  <p className="text-slate-500 text-xs">Assign agricultural maintenance schedules, harvest operations, and system updates to operatives.</p>
+                  <h3 className="text-lg font-black">Crop Care & Health Portal</h3>
+                  <p className="text-slate-500 text-xs">Assign and monitor soil checkups, crop watering schedules, and organic pesticide treatments.</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <select 
-                    className="bg-[#0f172a] border border-slate-800 text-slate-300 rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500"
+                    className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 ${
+                      theme === 'dark' ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                    }`}
                     value={taskFilter}
                     onChange={e => setTaskFilter(e.target.value)}
                   >
-                    <option value="all">All Statuses</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Completed">Completed</option>
+                    <option value="all">All Assignments</option>
+                    <option value="Pending">Pending / In-Progress</option>
+                    <option value="Completed">Completed Duties</option>
                   </select>
                   <button 
                     onClick={() => { setEditingTask(null); setTaskForm({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' }); setShowTaskModal(true); }}
-                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto"
+                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto shrink-0"
                   >
-                    <Plus size={16} /> Assign Task
+                    <Plus size={16} /> Schedule Care
                   </button>
                 </div>
               </div>
@@ -960,16 +1078,22 @@ function App() {
               {/* Tasks Roster Board */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {tasks.length === 0 ? (
-                  <div className="col-span-full bg-[#0f172a] border border-slate-800 py-12 rounded-2xl text-center text-slate-500">
-                    Duty roster is clean. Assign tasks to workers to distribute schedules.
+                  <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
+                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  }`}>
+                    Duty care roster is currently clean.
                   </div>
                 ) : filteredTasks.length === 0 ? (
-                  <div className="col-span-full bg-[#0f172a] border border-slate-800 py-12 rounded-2xl text-center text-slate-500">
-                    No assignments found matching this status filter.
+                  <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
+                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  }`}>
+                    No duty assignments found matching this status.
                   </div>
                 ) : filteredTasks.map((t, idx) => (
-                  <div key={t._id} className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-md flex flex-col justify-between" style={{
-                    borderLeft: `4px solid ${t.status === 'Completed' ? '#444' : t.priority === 'High' ? '#ef4444' : '#22c55e'}`,
+                  <div key={t._id} className={`border rounded-2xl p-5 shadow-md flex flex-col justify-between ${
+                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  }`} style={{
+                    borderLeft: `4px solid ${t.status === 'Completed' ? '#475569' : t.priority === 'High' ? '#ef4444' : '#22c55e'}`,
                     opacity: t.status === 'Completed' ? 0.6 : 1,
                     animation: 'fadeIn 0.3s ease-out',
                     animationDelay: `${idx * 0.05}s`
@@ -978,49 +1102,47 @@ function App() {
                       {/* Priority Tag & Completion Checkbox */}
                       <div className="flex justify-between items-center">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                          t.priority === 'High' ? 'bg-red-950/40 text-red-400 border border-red-900/20' :
+                          t.priority === 'High' ? 'bg-red-950 text-red-400 border border-red-900/20' :
                           t.priority === 'Low' ? 'bg-slate-800 text-slate-400' :
-                          'bg-farm-950 text-farm-300 border border-farm-900'
+                          'bg-farm-900/20 text-farm-400 border border-farm-900/30'
                         }`}>{t.priority} Priority</span>
                         
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
-                            t.status === 'Completed' ? 'bg-slate-800 text-slate-500' : 'bg-farm-950 text-farm-400'
-                          }`}>{t.status}</span>
-                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                          t.status === 'Completed' ? 'bg-slate-800 text-slate-500' : 'bg-farm-900/20 text-farm-400 border border-farm-900/30'
+                        }`}>{t.status}</span>
                       </div>
 
                       {/* Main Title */}
                       <div>
-                        <h4 className={`text-base font-extrabold text-white leading-tight ${t.status === 'Completed' ? 'line-through text-slate-500' : ''}`}>{t.title}</h4>
-                        {t.notes && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{t.notes}</p>}
+                        <h4 className={`text-sm md:text-base font-black ${t.status === 'Completed' ? 'line-through text-slate-500' : ''}`}>{t.title}</h4>
+                        {t.notes && <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{t.notes}</p>}
                       </div>
 
                       {/* Info lines */}
-                      <div className="border-t border-slate-800/60 pt-3 space-y-1.5 text-xs text-slate-400">
-                        <p className="flex items-center gap-2"><Users size={12} className="text-slate-500" /> Operative: <span className="text-slate-200 font-semibold">{t.assigned_to || 'Unassigned / General'}</span></p>
-                        <p className="flex items-center gap-2"><Calendar size={12} className="text-slate-500" /> Due Date: <span className="text-slate-200 font-semibold">{t.due_date || 'None / Ongoing'}</span></p>
+                      <div className="border-t border-slate-800/10 dark:border-slate-800/60 pt-3 space-y-1.5 text-xs text-slate-400">
+                        <p className="flex items-center gap-2"><Users size={12} className="text-slate-500" /> Operative: <span className="font-semibold">{t.assigned_to || 'Broadcast Duty'}</span></p>
+                        <p className="flex items-center gap-2"><Calendar size={12} className="text-slate-500" /> Due Date: <span className="font-semibold">{t.due_date || 'None / Ongoing'}</span></p>
                       </div>
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="flex justify-between items-center mt-5 pt-3 border-t border-slate-800/60">
+                    <div className="flex justify-between items-center mt-5 pt-3 border-t border-slate-800/10 dark:border-slate-800/60">
                       {t.status === 'Pending' ? (
                         <button 
                           onClick={() => handleCompleteTask(t._id)}
-                          className="text-xs text-farm-400 hover:text-farm-300 font-bold flex items-center gap-1.5 transition-colors"
+                          className="text-xs text-farm-500 hover:text-farm-400 font-bold flex items-center gap-1.5 transition-colors"
                         >
-                          <CheckCircle size={14} /> Complete Task
+                          <CheckCircle size={14} /> Complete
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle size={12} /> Work Completed</span>
+                        <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle size={12} /> Duties Completed</span>
                       )}
                       
                       <div className="flex gap-1">
-                        <button onClick={() => handleEditTask(t)} className="p-1.5 text-slate-400 hover:text-farm-400 hover:bg-slate-800 rounded-lg transition-colors">
+                        <button onClick={() => handleEditTask(t)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg transition-colors">
                           <Edit3 size={14} />
                         </button>
-                        <button onClick={() => handleDeleteTask(t._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors">
+                        <button onClick={() => handleDeleteTask(t._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -1031,51 +1153,164 @@ function App() {
             </div>
           )}
 
+          {/* ───────────────── VIEW: MONTHLY SUMMARY ───────────────── */}
+          {view === 'summary' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="border-b border-slate-800 pb-5">
+                <h3 className="text-lg font-black text-white dark:text-white light:text-slate-900">Monthly Performance Summary</h3>
+                <p className="text-slate-500 text-xs">Aggregated analytics and development trend data for crops yield and operational ledger budgets.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Operations Health Checklist */}
+                <div className={`border p-6 rounded-2xl shadow-sm space-y-4 ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800 pb-3">Operational Milestones Checklist</h4>
+                  <ul className="space-y-3 text-xs md:text-sm">
+                    <li className="flex items-center gap-3">
+                      <CheckCircle size={16} className="text-farm-400" />
+                      <span>Planted Sectors Fully Registerized ({crops.length} items)</span>
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <CheckCircle size={16} className="text-farm-400" />
+                      <span>Ledger flow bookkeeping validated and up-to-date</span>
+                    </li>
+                    <li className="flex items-center gap-3">
+                      {tasks.filter(t => t.status === 'Pending').length === 0 ? (
+                        <CheckCircle size={16} className="text-farm-400" />
+                      ) : (
+                        <Circle size={16} className="text-slate-500" />
+                      )}
+                      <span>All active duty roster tasks completed ({tasks.filter(t => t.status === 'Pending').length} pending)</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Ledger Breakdown */}
+                <div className={`border p-6 rounded-2xl shadow-sm space-y-4 ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800 pb-3">Yield Classification Yields</h4>
+                  <div className="space-y-3">
+                    {crops.length === 0 ? (
+                      <p className="text-slate-500 text-xs text-center py-4">No yield telemetry recorded.</p>
+                    ) : crops.filter(c => c.yield_kg > 0).map(c => {
+                      return (
+                        <div key={c._id} className="flex justify-between items-center text-xs md:text-sm">
+                          <span className="font-semibold">{c.name} ({c.variety || 'variety'})</span>
+                          <span className="font-bold text-farm-400">{c.yield_kg.toLocaleString()} kg</span>
+                        </div>
+                      );
+                    })}
+                    {crops.filter(c => c.yield_kg > 0).length === 0 && (
+                      <p className="text-slate-500 text-xs text-center py-4">Yields are pending harvest development phases.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Monthly Ledger Flow Timeline */}
+              <div className={`border p-6 rounded-2xl shadow-sm ${
+                theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+              }`}>
+                <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800 pb-3 mb-4">Operations Ledger Log History</h4>
+                <div className="space-y-3">
+                  {finance.map((f, idx) => (
+                    <div key={f._id} className="flex justify-between items-center text-xs md:text-sm p-2.5 rounded-lg hover:bg-slate-800/10 dark:hover:bg-slate-900/30">
+                      <span className="text-slate-500">{f.date}</span>
+                      <span className="font-semibold flex-1 ml-4">{f.category}</span>
+                      <span className={`font-bold ${f.type === 'expense' ? 'text-red-400' : 'text-farm-400'}`}>
+                        {f.type === 'expense' ? '-' : '+'}${f.amount.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                  {finance.length === 0 && (
+                    <p className="text-slate-500 text-xs text-center py-6">Ledger book timeline is empty.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ───────────────── VIEW: SETTINGS & ADMIN ───────────────── */}
           {view === 'settings' && (
             <div className="space-y-8 animate-fade-in">
               <div className="border-b border-slate-800 pb-5">
-                <h3 className="text-lg font-extrabold text-white">Settings & Administration Portal</h3>
-                <p className="text-slate-500 text-xs">Configure access security, backup operations, and administrative privileges.</p>
+                <h3 className="text-lg font-black">Settings & System Admin Portal</h3>
+                <p className="text-slate-500 text-xs">Configure responsive layouts, account passwords, database atomic backups, and worker registries.</p>
+              </div>
+
+              {/* Typography Adjuster */}
+              <div className={`border p-6 rounded-2xl shadow-md space-y-4 ${
+                theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+              }`}>
+                <div className="flex items-center gap-3 border-b border-slate-800/10 dark:border-slate-800 pb-3">
+                  <Type className="text-farm-400" />
+                  <div>
+                    <h4 className="font-extrabold text-sm md:text-base">Display & Typography Settings</h4>
+                    <p className="text-xs text-slate-500">Configure global dashboard font size presentation scales.</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {['sm', 'base', 'md', 'lg'].map(size => (
+                    <button 
+                      key={size}
+                      onClick={() => handleTextSizeChange(size)}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
+                        textSize === size 
+                          ? 'bg-farm-600 border-farm-500 text-white' 
+                          : theme === 'dark'
+                            ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                            : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {size === 'sm' ? "Small Font" : size === 'base' ? "Normal Font" : size === 'md' ? "Medium Font" : "Large Font"}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Worker Accounts Management Panel (Admin Only) */}
               {userRole === 'admin' ? (
-                <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-md space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                <div className={`border rounded-2xl p-6 shadow-md space-y-6 ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <div className="flex items-center gap-3 border-b border-slate-800/10 dark:border-slate-800 pb-4">
                     <Users className="text-farm-400" />
                     <div>
-                      <h4 className="font-extrabold text-white text-base">Worker Account Management (Admin Privileged)</h4>
-                      <p className="text-xs text-slate-500">Create new worker accounts, configure roles, and terminate operative access.</p>
+                      <h4 className="font-extrabold text-sm md:text-base">Worker Account Registries (Admin Privileged)</h4>
+                      <p className="text-xs text-slate-500">Create new worker logins, configure access scales, and remove worker registry records.</p>
                     </div>
                   </div>
 
                   {/* Creation Form */}
-                  <form onSubmit={handleAddWorker} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end bg-[#151d30]/40 p-4 rounded-xl border border-slate-800">
+                  <form onSubmit={handleAddWorker} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end bg-slate-900/10 dark:bg-[#151d30]/40 p-4 rounded-xl border border-slate-300 dark:border-slate-800">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Username</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Username</label>
                       <input 
-                        className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                        className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500"
                         placeholder="e.g. johan"
                         value={newWorkerForm.username}
                         onChange={e => setNewWorkerForm({...newWorkerForm, username: e.target.value})}
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Email</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Email</label>
                       <input 
                         type="email"
-                        className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                        className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500"
                         placeholder="johan@farm.com"
                         value={newWorkerForm.email}
                         onChange={e => setNewWorkerForm({...newWorkerForm, email: e.target.value})}
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Password</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Password</label>
                       <input 
                         type="password"
-                        className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                        className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500"
                         placeholder="Secret word"
                         value={newWorkerForm.password}
                         onChange={e => setNewWorkerForm({...newWorkerForm, password: e.target.value})}
@@ -1088,16 +1323,16 @@ function App() {
 
                   {/* Worker Accounts Listing */}
                   <div className="space-y-3">
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Registered Operatives ({users.length})</p>
-                    <div className="divide-y divide-slate-800 border border-slate-800 rounded-xl overflow-hidden bg-[#151d30]/20">
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Registered Operatives ({users.length})</p>
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-900/10 dark:bg-[#151d30]/20">
                       {users.map(u => (
                         <div key={u._id} className="flex justify-between items-center p-4">
                           <div>
-                            <p className="text-sm font-bold text-white">{u.username} <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 ml-2">{u.role}</span></p>
+                            <p className="text-sm font-bold">{u.username} <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 ml-2">{u.role}</span></p>
                             <p className="text-xs text-slate-500">{u.email}</p>
                           </div>
                           {u.username !== 'admin' && (
-                            <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg">
+                            <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-slate-400 hover:text-red-400 rounded-lg">
                               <Trash2 size={16} />
                             </button>
                           )}
@@ -1107,27 +1342,31 @@ function App() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-md text-slate-500 flex items-center gap-3">
+                <div className={`border p-6 rounded-2xl shadow-md text-slate-500 flex items-center gap-3 ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
                   <ShieldCheck size={20} />
-                  <p className="text-xs font-medium">Worker account access level detected. Worker management panel is restricted to Administrators.</p>
+                  <p className="text-xs font-medium">Worker account access level detected. Worker registry management panel is restricted to Administrators.</p>
                 </div>
               )}
 
               {/* Database Backup & Restore Center (Admin Only) */}
               {userRole === 'admin' ? (
-                <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-md space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                <div className={`border rounded-2xl p-6 shadow-md space-y-6 ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <div className="flex items-center gap-3 border-b border-slate-800/10 dark:border-slate-800 pb-4">
                     <Database className="text-farm-400" />
                     <div>
-                      <h4 className="font-extrabold text-white text-base">Database Backup & Recovery Control (Admin Privileged)</h4>
+                      <h4 className="font-extrabold text-sm md:text-base">Database Backup & Recovery Control (Admin Privileged)</h4>
                       <p className="text-xs text-slate-500">Atomic full-database backup exports and backup recovery restoration.</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Export */}
-                    <div className="p-5 rounded-xl border border-slate-800 bg-[#151d30]/30 space-y-3">
-                      <h5 className="text-sm font-bold text-slate-200">Database Backup Export</h5>
+                    <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
+                      <h5 className="text-sm font-bold">Database Backup Export</h5>
                       <p className="text-xs text-slate-500 leading-relaxed">Download a single-file atomic JSON backup containing all crops, financial logs, duties rosters, and worker lists.</p>
                       <button onClick={handleExportBackup} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all">
                         <Database size={14} /> Download JSON Backup
@@ -1135,8 +1374,8 @@ function App() {
                     </div>
 
                     {/* Import/Restore */}
-                    <div className="p-5 rounded-xl border border-slate-800 bg-[#151d30]/30 space-y-3">
-                      <h5 className="text-sm font-bold text-slate-200">Database Recovery Restore</h5>
+                    <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
+                      <h5 className="text-sm font-bold">Database Recovery Restore</h5>
                       <p className="text-xs text-slate-500 leading-relaxed">Restore all databases atomically from a previously downloaded AgriFarm backup file. Warning: This clears all existing tables.</p>
                       <label className="inline-flex items-center gap-2 px-4 py-2 bg-farm-900/30 hover:bg-farm-900/50 text-farm-300 border border-farm-800 hover:border-farm-700 text-xs font-bold rounded-lg cursor-pointer transition-all">
                         <Database size={14} /> Upload & Restore Database
@@ -1146,7 +1385,9 @@ function App() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-md text-slate-500 flex items-center gap-3">
+                <div className={`border p-6 rounded-2xl shadow-md text-slate-500 flex items-center gap-3 ${
+                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                }`}>
                   <ShieldCheck size={20} />
                   <p className="text-xs font-medium">Worker account access level detected. Database backup and restore center is restricted to Administrators.</p>
                 </div>
@@ -1157,7 +1398,7 @@ function App() {
         </div>
       </main>
 
-      {/* ───────────────── MODALS ───────────────── */}
+      {/* ─── MODALS ─── */}
 
       {/* CROP FORM MODAL */}
       {showCropModal && (
@@ -1237,7 +1478,7 @@ function App() {
             <button onClick={() => setShowFinanceModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"><X size={20} /></button>
             <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2"><DollarSign className="text-farm-400" /> {editingFinance ? "Modify Transaction" : "Record Book Log"}</h3>
             
-            <form onSubmit={handleAddFinance} className="space-y-4">
+            <form onSubmit={handleFinanceSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Ledger Flow *</label>
@@ -1264,7 +1505,7 @@ function App() {
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Associate with Crop Sector</label>
                 <select 
-                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
                   value={finForm.crop_id}
                   onChange={e => setFinForm({...finForm, crop_id: e.target.value})}
                 >
