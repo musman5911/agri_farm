@@ -554,21 +554,23 @@ function App() {
     } ${textClassMap[textSize]}`}>
       
       {/* Container wrapper matching flock_farm */}
-      <div className="max-w-[1100px] w-full mx-auto px-4 md:px-6 py-6 space-y-6 flex-1 flex flex-col">
+      <div className="max-w-[1100px] w-full mx-auto px-4 md:px-6 py-4 space-y-4 flex-1 flex flex-col">
         
         {/* Header Block */}
-        <header className={`flex items-center justify-between pb-4 border-b transition-colors ${
+        <header className={`flex items-center justify-between pb-3 border-b transition-colors ${
           isDark ? 'border-slate-800' : 'border-slate-200'
         }`}>
           <div className="flex items-center gap-3">
-            <div className="bg-farm-600 p-2.5 rounded-2xl text-white shadow-md shadow-farm-500/10 shrink-0">
-              <Sprout size={26} className="animate-bounce-soft" />
-            </div>
+            <img 
+              src="/logo.png" 
+              className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm shrink-0" 
+              onError={(e) => { e.target.src = "https://raw.githubusercontent.com/musman5911/flock_farm/main/public/logo-icon.png"; }}
+            />
             <div>
-              <h1 className={`font-black tracking-tight leading-none ${isDark ? 'text-white' : 'text-slate-950'}`}>
-                AgriFarm
+              <h1 className={`font-black tracking-tight leading-none text-sm md:text-base ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                Usman Agri Farm
               </h1>
-              <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">
+              <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">
                 Advanced Crop Management System
               </p>
             </div>
@@ -578,33 +580,33 @@ function App() {
             {/* Dark/Light mode toggle */}
             <button 
               onClick={() => setIsDark(!isDark)}
-              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
                 isDark 
                   ? 'border-slate-800 bg-slate-900 text-yellow-400 hover:bg-slate-800' 
                   : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
               }`}
               title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              {isDark ? <Sun size={15} /> : <Moon size={15} />}
             </button>
 
             {/* Logout button */}
             <button 
               onClick={handleLogout}
-              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
                 isDark 
                   ? 'border-slate-800 bg-slate-900 text-slate-400 hover:text-red-400' 
                   : 'border-slate-200 bg-white text-slate-500 hover:text-red-600'
               }`}
               title="Logout"
             >
-              <LogOut size={16} />
+              <LogOut size={15} />
             </button>
           </div>
         </header>
 
         {/* ─── HORIZONTAL SCROLLABLE TABS (Matches flock_farm exact layout) ─── */}
-        <div className={`flex items-center gap-1.5 overflow-x-auto border-b pb-2 shrink-0 select-none custom-scrollbar ${
+        <div className={`flex items-center gap-1 overflow-x-auto border-b pb-1.5 shrink-0 select-none custom-scrollbar ${
           isDark ? 'border-slate-800' : 'border-slate-200'
         }`}>
           {navItems.map(({ id, label, icon: Icon }) => {
@@ -613,15 +615,15 @@ function App() {
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold tracking-tight transition cursor-pointer whitespace-nowrap shrink-0 border ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-tight transition cursor-pointer whitespace-nowrap shrink-0 border ${
                   active
-                    ? 'bg-farm-600 border-farm-500 text-white shadow-md shadow-farm-500/10'
+                    ? 'bg-farm-600 border-farm-500 text-white shadow-sm shadow-farm-500/10'
                     : isDark
                       ? 'bg-[#0f172a] border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                       : 'bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
                 }`}
               >
-                <Icon size={14} />
+                <Icon size={12} />
                 {label}
               </button>
             );
