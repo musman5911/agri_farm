@@ -26,7 +26,6 @@ import {
   Edit3,
   X,
   ShieldCheck,
-  Tag,
   MapPin,
   Scale,
   Sun,
@@ -42,8 +41,8 @@ function App() {
   const [username, setUsername] = useState(localStorage.getItem('username') || 'Worker');
   
   // Custom states for theme, tabs, and text settings
-  const [view, setView] = useState('dashboard'); 
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [activeTab, setActiveTab] = useState('dashboard'); 
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') !== 'light');
   const [textSize, setTextSize] = useState(localStorage.getItem('text_size') || 'base'); // sm, base, md, lg
   
   const [crops, setCrops] = useState([]);
@@ -87,20 +86,20 @@ function App() {
     setTimeout(() => setAlertMsg({ text: '', isError: false }), 4000);
   };
 
-  // Theme Sync on body
+  // Sync isDark with document element & body
   useEffect(() => {
-    const root = window.document.body;
-    if (theme === 'dark') {
+    const root = window.document.documentElement;
+    const body = window.document.body;
+    if (isDark) {
       root.classList.add('dark');
-      root.classList.remove('light');
-      root.style.backgroundColor = '#070b13';
+      body.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
     } else {
-      root.classList.add('light');
       root.classList.remove('dark');
-      root.style.backgroundColor = '#f8fafc';
+      body.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
     }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+  }, [isDark]);
 
   // Text size configuration helper
   const textClassMap = {
@@ -441,9 +440,19 @@ function App() {
     window.open(`https://wa.me/?text=${msg}`);
   };
 
+  // Tab configurations
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'crops', label: 'Crops Register', icon: Sprout },
+    { id: 'finance', label: 'Financial Ledger', icon: DollarSign },
+    { id: 'tasks', label: 'Care & Health', icon: HeartPulse },
+    { id: 'summary', label: 'Monthly Summary', icon: BarChart3 },
+    { id: 'settings', label: 'Settings & Admin', icon: Settings },
+  ];
+
   // --- RENDER AUTHENTICATION ---
   if (!token) return (
-    <div className="min-h-screen bg-[#070b13] dark:bg-[#070b13] light:bg-slate-100 flex flex-col justify-center items-center px-4">
+    <div className="min-h-screen bg-[#070b13] dark:bg-[#070b13] light:bg-slate-50 flex flex-col justify-center items-center px-4 transition-colors">
       {alertMsg.text && (
         <div className={`mb-6 p-4 rounded-xl shadow-lg border text-sm max-w-sm w-full animate-fade-in ${
           alertMsg.isError ? 'bg-red-950/80 border-red-500 text-red-200' : 'bg-farm-950/80 border-farm-500 text-farm-200'
@@ -455,13 +464,13 @@ function App() {
         </div>
       )}
       
-      <div className="bg-[#0f172a] border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover">
+      <div className="bg-[#0f172a] dark:bg-[#0f172a] light:bg-white border border-slate-800 dark:border-slate-800 light:border-slate-200 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover">
         <div className="flex justify-center mb-4">
           <div className="bg-farm-900/40 p-4 rounded-full border border-farm-500/20 text-farm-400">
             <Sprout size={36} className="animate-bounce-soft" />
           </div>
         </div>
-        <h2 className="text-center text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+        <h2 className="text-center text-farm-500 text-2xl font-extrabold tracking-tight mb-1">
           AgriFarm Command Hub
         </h2>
         <p className="text-center text-slate-500 text-xs mb-8 uppercase tracking-widest font-semibold">
@@ -474,7 +483,7 @@ function App() {
               <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Username</label>
               <input 
                 type="text"
-                className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                className="w-full bg-[#1e293b] dark:bg-[#1e293b] light:bg-slate-50 border border-slate-700 dark:border-slate-700 light:border-slate-300 rounded-lg px-4 py-3 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
                 placeholder="e.g. musman" 
                 value={authForm.username}
                 onChange={e => setAuthForm({...authForm, username: e.target.value})} 
@@ -486,7 +495,7 @@ function App() {
             <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Email Address</label>
             <input 
               type="email"
-              className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
+              className="w-full bg-[#1e293b] dark:bg-[#1e293b] light:bg-slate-50 border border-slate-700 dark:border-slate-700 light:border-slate-300 rounded-lg px-4 py-3 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
               placeholder="worker@farm.com" 
               value={authForm.email}
               onChange={e => setAuthForm({...authForm, email: e.target.value})} 
@@ -497,7 +506,7 @@ function App() {
             <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Access Password</label>
             <input 
               type="password" 
-              className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
+              className="w-full bg-[#1e293b] dark:bg-[#1e293b] light:bg-slate-50 border border-slate-700 dark:border-slate-700 light:border-slate-300 rounded-lg px-4 py-3 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
               placeholder="••••••••" 
               value={authForm.password}
               onChange={e => setAuthForm({...authForm, password: e.target.value})} 
@@ -508,7 +517,7 @@ function App() {
             <div>
               <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Access Level (Role)</label>
               <select 
-                className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                className="w-full bg-[#1e293b] dark:bg-[#1e293b] light:bg-slate-50 border border-slate-700 dark:border-slate-700 light:border-slate-300 rounded-lg px-4 py-3 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-farm-500 transition-colors font-medium"
                 value={authForm.role}
                 onChange={e => setAuthForm({...authForm, role: e.target.value})}
               >
@@ -520,7 +529,7 @@ function App() {
           
           <button 
             type="submit" 
-            className="w-full py-3 bg-farm-600 hover:bg-farm-700 text-white font-bold rounded-lg transition-colors shadow-lg hover:shadow-farm-500/10 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-farm-600 hover:bg-farm-700 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-farm-500/10 flex items-center justify-center gap-2 cursor-pointer"
             disabled={loading}
           >
             {loading ? <Loader size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
@@ -528,7 +537,7 @@ function App() {
           </button>
         </form>
         
-        <p className="text-center text-xs text-slate-400 mt-6 cursor-pointer hover:text-slate-200 transition-colors uppercase font-bold tracking-wider" onClick={() => {
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6 cursor-pointer hover:text-slate-400 dark:hover:text-slate-200 transition-colors uppercase font-bold tracking-wider" onClick={() => {
           setIsRegister(!isRegister);
           setAuthForm({ username: '', email: '', password: '', role: 'worker' });
         }}>
@@ -538,216 +547,174 @@ function App() {
     </div>
   );
 
-  // --- RENDER DASHBOARD ---
+  // --- RENDER MAIN INTERFACE ---
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${
-      theme === 'dark' ? 'bg-[#070b13] text-slate-100' : 'bg-slate-50 text-slate-800'
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${
+      isDark ? 'bg-[#070b13] text-slate-100' : 'bg-slate-50 text-slate-800'
     } ${textClassMap[textSize]}`}>
       
-      {/* ─── SIDEBAR ─── */}
-      <aside className={`w-full md:w-64 flex flex-col justify-between py-6 px-4 shrink-0 shadow-xl border-r ${
-        theme === 'dark' ? 'bg-[#0f172a] border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
-      }`}>
-        <div className="space-y-8">
-          {/* Logo Brand */}
-          <div className="flex items-center gap-3 px-2">
-            <div className="bg-farm-900/50 p-2 rounded-xl border border-farm-500/20 text-farm-400">
-              <Sprout size={24} />
-            </div>
-            <div>
-              <h1 className="text-lg font-extrabold tracking-tight m-0 p-0 leading-tight">AgriFarm</h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none">Command Center</p>
-            </div>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="space-y-1">
-            <button 
-              onClick={() => setView('dashboard')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-                view === 'dashboard' 
-                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
-                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
-              }`}
-            >
-              <LayoutDashboard size={16} /> Dashboard
-            </button>
-            <button 
-              onClick={() => setView('crops')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-                view === 'crops' 
-                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
-                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
-              }`}
-            >
-              <Sprout size={16} /> Crops Register
-            </button>
-            <button 
-              onClick={() => setView('finance')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-                view === 'finance' 
-                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
-                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
-              }`}
-            >
-              <DollarSign size={16} /> Financial Ledger
-            </button>
-            <button 
-              onClick={() => setView('tasks')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-                view === 'tasks' 
-                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
-                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
-              }`}
-            >
-              <HeartPulse size={16} /> Care & Health
-            </button>
-            <button 
-              onClick={() => setView('summary')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-                view === 'summary' 
-                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
-                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
-              }`}
-            >
-              <BarChart3 size={16} /> Monthly Summary
-            </button>
-            <button 
-              onClick={() => setView('settings')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all ${
-                view === 'settings' 
-                  ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' 
-                  : 'text-slate-400 hover:bg-slate-800/10 dark:hover:bg-slate-800/40 hover:text-farm-500'
-              }`}
-            >
-              <Settings size={16} /> Settings & Admin
-            </button>
-          </nav>
-        </div>
-
-        {/* User Badge & Logout */}
-        <div className="border-t border-slate-800 pt-4 mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{userRole} LEVEL</p>
-              <p className="text-xs font-black truncate max-w-[130px]">{username}</p>
-            </div>
-            <div className="bg-slate-800/40 p-2 rounded-lg text-farm-400 border border-slate-700/50">
-              <ShieldCheck size={16} />
-            </div>
-          </div>
-          <button 
-            onClick={handleLogout}
-            className="w-full py-2 bg-red-950/20 hover:bg-red-900/30 text-red-400 border border-red-900/40 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all"
-          >
-            <LogOut size={14} /> Logout
-          </button>
-        </div>
-      </aside>
-
-      {/* ─── MAIN CONTENT PANEL ─── */}
-      <main className="flex-1 min-w-0 flex flex-col">
+      {/* Container wrapper matching flock_farm */}
+      <div className="max-w-[1100px] w-full mx-auto px-4 md:px-6 py-6 space-y-6 flex-1 flex flex-col">
         
-        {/* Top Header */}
-        <header className={`border-b py-4 px-6 md:px-8 flex justify-between items-center shrink-0 transition-colors ${
-          theme === 'dark' ? 'bg-[#0f172a]/40 border-slate-800' : 'bg-white border-slate-200'
+        {/* Header Block */}
+        <header className={`flex items-center justify-between pb-4 border-b transition-colors ${
+          isDark ? 'border-slate-800' : 'border-slate-200'
         }`}>
-          <div className="flex items-center gap-4">
-            <h2 className={`font-black uppercase tracking-wider capitalize ${titleClassMap[textSize]}`}>{view}</h2>
-          </div>
           <div className="flex items-center gap-3">
-            {/* Theme Toggle Button */}
+            <div className="bg-farm-600 p-2.5 rounded-2xl text-white shadow-md shadow-farm-500/10 shrink-0">
+              <Sprout size={26} className="animate-bounce-soft" />
+            </div>
+            <div>
+              <h1 className={`font-black tracking-tight leading-none ${isDark ? 'text-white' : 'text-slate-950'}`}>
+                AgriFarm
+              </h1>
+              <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">
+                Advanced Crop Management System
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {/* Dark/Light mode toggle */}
             <button 
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className={`p-2.5 rounded-xl border transition-all ${
-                theme === 'dark' 
-                  ? 'bg-slate-800 border-slate-700 text-yellow-400 hover:bg-slate-700' 
-                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+              onClick={() => setIsDark(!isDark)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
+                isDark 
+                  ? 'border-slate-800 bg-slate-900 text-yellow-400 hover:bg-slate-800' 
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
               }`}
-              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            <button onClick={sendWhatsApp} className="hidden sm:flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-transform hover:scale-105 shadow-md">
-              <Send size={14} /> WhatsApp Report
+            {/* Logout button */}
+            <button 
+              onClick={handleLogout}
+              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
+                isDark 
+                  ? 'border-slate-800 bg-slate-900 text-slate-400 hover:text-red-400' 
+                  : 'border-slate-200 bg-white text-slate-500 hover:text-red-600'
+              }`}
+              title="Logout"
+            >
+              <LogOut size={16} />
             </button>
           </div>
         </header>
 
-        {/* Dynamic Content Views */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        {/* ─── HORIZONTAL SCROLLABLE TABS (Matches flock_farm exact layout) ─── */}
+        <div className={`flex items-center gap-1.5 overflow-x-auto border-b pb-2 shrink-0 select-none custom-scrollbar ${
+          isDark ? 'border-slate-800' : 'border-slate-200'
+        }`}>
+          {navItems.map(({ id, label, icon: Icon }) => {
+            const active = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold tracking-tight transition cursor-pointer whitespace-nowrap shrink-0 border ${
+                  active
+                    ? 'bg-farm-600 border-farm-500 text-white shadow-md shadow-farm-500/10'
+                    : isDark
+                      ? 'bg-[#0f172a] border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      : 'bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                }`}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Floating alerts */}
+        {alertMsg.text && (
+          <div className={`fixed top-6 right-6 z-50 p-4 rounded-xl shadow-2xl border text-xs md:text-sm max-w-sm animate-fade-in-up ${
+            alertMsg.isError ? 'bg-red-950 border-red-500 text-red-200' : 'bg-farm-950 border-farm-500 text-farm-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              {alertMsg.isError ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
+              <span>{alertMsg.text}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Tab views content area */}
+        <div className="flex-1 min-h-0 flex flex-col">
           
           {/* ───────────────── VIEW: DASHBOARD ───────────────── */}
-          {view === 'dashboard' && (
-            <div className="space-y-8 animate-fade-in">
-              <div className={`p-6 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
-                theme === 'dark' 
-                  ? 'bg-gradient-to-r from-farm-900/20 via-slate-900 to-slate-900 border-farm-500/20' 
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6 animate-fade-in flex-1">
+              <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
+                isDark 
+                  ? 'bg-gradient-to-r from-farm-900/20 via-slate-950 to-slate-950 border-farm-500/20' 
                   : 'bg-gradient-to-r from-farm-50 via-white to-white border-farm-200'
               }`}>
                 <div>
-                  <h2 className="text-xl md:text-2xl font-black leading-tight">Welcome to Command Center, {username}!</h2>
-                  <p className="text-slate-400 text-xs mt-1">Telemetry registers, agricultural ledger boards, and worker rosters are successfully synced.</p>
+                  <h2 className={`font-black leading-tight ${isDark ? 'text-white' : 'text-slate-950'} ${titleClassMap[textSize]}`}>
+                    Telemetry Operations: {username}
+                  </h2>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Real-time indicators, operational financials, and scheduled crop cares are fully operational.</p>
                 </div>
-                <span className="bg-farm-900/40 text-farm-300 border border-farm-500/20 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 shrink-0">
-                  <ShieldCheck size={14} /> Core Operations Online
+                <span className="bg-farm-900/30 text-farm-400 border border-farm-500/20 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 shrink-0">
+                  <ShieldCheck size={14} /> System Secure
                 </span>
               </div>
 
               {/* Status Grid Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all ${
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
                 }`}>
                   <div>
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Crops Planted</p>
-                    <p className="text-2xl md:text-3xl font-black mt-1">{crops.length}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{crops.filter(c => c.status === 'Growing').length} Growing phase</p>
+                    <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{crops.length}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">{crops.filter(c => c.status === 'Growing').length} Growing phase</p>
                   </div>
-                  <div className="bg-farm-950 text-farm-400 p-3 rounded-xl border border-farm-900/30">
-                    <Sprout size={22} />
+                  <div className="bg-farm-900/20 text-farm-400 p-3 rounded-xl border border-farm-500/10">
+                    <Sprout size={20} />
                   </div>
                 </div>
 
-                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all ${
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
                 }`}>
                   <div>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Ledger Net Profit</p>
-                    <p className={`text-2xl md:text-3xl font-black mt-1 ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Operational Profit</p>
+                    <p className={`font-black mt-1 ${titleClassMap[textSize]} ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
                       ${netProfit.toLocaleString()}
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-1">Inflow vs Expense ledger</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Income vs Outflow ledger</p>
                   </div>
-                  <div className={`p-3 rounded-xl border ${netProfit >= 0 ? 'bg-farm-950 text-farm-400 border-farm-900/30' : 'bg-red-950/40 text-red-400 border-red-900/20'}`}>
-                    {netProfit >= 0 ? <TrendingUp size={22} /> : <TrendingDown size={22} />}
-                  </div>
-                </div>
-
-                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
-                }`}>
-                  <div>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Care roster</p>
-                    <p className="text-2xl md:text-3xl font-black mt-1">{tasks.filter(t => t.status === 'Pending').length}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{tasks.filter(t => t.status === 'Completed').length} Duties completed</p>
-                  </div>
-                  <div className="bg-indigo-950 text-indigo-400 p-3 rounded-xl border border-indigo-900/30">
-                    <CheckSquare size={22} />
+                  <div className={`p-3 rounded-xl border ${netProfit >= 0 ? 'bg-farm-900/20 text-farm-400 border-farm-500/10' : 'bg-red-950/40 text-red-400 border-red-900/20'}`}>
+                    {netProfit >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
                   </div>
                 </div>
 
-                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all ${
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
                 }`}>
                   <div>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Operatives</p>
-                    <p className="text-2xl md:text-3xl font-black mt-1">{users.length || 1}</p>
-                    <p className="text-[10px] text-slate-400 mt-1">Active worker log registries</p>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Duties scheduled</p>
+                    <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{tasks.filter(t => t.status === 'Pending').length}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">{tasks.filter(t => t.status === 'Completed').length} Duties completed</p>
                   </div>
-                  <div className="bg-teal-950 text-teal-400 p-3 rounded-xl border border-teal-900/30">
-                    <Users size={22} />
+                  <div className="bg-indigo-900/20 text-indigo-400 p-3 rounded-xl border border-indigo-900/20">
+                    <CheckSquare size={20} />
+                  </div>
+                </div>
+
+                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all ${
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
+                }`}>
+                  <div>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Authorized users</p>
+                    <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{users.length || 1}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Active worker logins</p>
+                  </div>
+                  <div className="bg-teal-900/20 text-teal-400 p-3 rounded-xl border border-teal-900/20">
+                    <Users size={20} />
                   </div>
                 </div>
               </div>
@@ -756,21 +723,23 @@ function App() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* Active crops preview card */}
-                <div className={`border p-6 rounded-2xl shadow-md ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                <div className={`border p-5 rounded-2xl shadow-sm ${
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-4 mb-4">
-                    <h4 className="font-bold flex items-center gap-2"><Sprout size={18} className="text-farm-400" /> Planted Sectors</h4>
-                    <button onClick={() => setView('crops')} className="text-xs text-farm-500 hover:text-farm-400 font-bold uppercase tracking-wider">View All</button>
+                  <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-3 mb-4">
+                    <h4 className="font-extrabold flex items-center gap-2"><Sprout size={16} className="text-farm-400" /> Planted Sectors</h4>
+                    <button onClick={() => setActiveTab('crops')} className="text-xs text-farm-500 hover:text-farm-400 font-bold uppercase tracking-wider cursor-pointer">View All</button>
                   </div>
-                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                     {crops.length === 0 ? (
                       <p className="text-slate-500 text-xs text-center py-8">No crops currently registered.</p>
                     ) : crops.slice(0, 4).map(c => (
-                      <div key={c._id} className="flex justify-between items-center p-3 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800">
+                      <div key={c._id} className={`flex justify-between items-center p-3 rounded-xl border ${
+                        isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'
+                      }`}>
                         <div>
-                          <p className="text-xs font-extrabold">{c.name}</p>
-                          <p className="text-[10px] text-slate-500">Plot location: {c.field || 'General'}</p>
+                          <p className="text-xs font-bold">{c.name}</p>
+                          <p className="text-[10px] text-slate-400">Plot sector: {c.field || 'General'}</p>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
                           c.status === 'Growing' ? 'bg-farm-900/20 text-farm-400 border border-farm-900/30' : 'bg-indigo-950 text-indigo-400 border border-indigo-900/30'
@@ -781,23 +750,25 @@ function App() {
                 </div>
 
                 {/* Duty board preview card */}
-                <div className={`border p-6 rounded-2xl shadow-md ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                <div className={`border p-5 rounded-2xl shadow-sm ${
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-4 mb-4">
-                    <h4 className="font-bold flex items-center gap-2"><HeartPulse size={18} className="text-farm-400" /> Active Care Roster</h4>
-                    <button onClick={() => setView('tasks')} className="text-xs text-farm-500 hover:text-farm-400 font-bold uppercase tracking-wider">Open Portal</button>
+                  <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-3 mb-4">
+                    <h4 className="font-extrabold flex items-center gap-2"><HeartPulse size={16} className="text-farm-400" /> Care & Operations Roster</h4>
+                    <button onClick={() => setActiveTab('tasks')} className="text-xs text-farm-500 hover:text-farm-400 font-bold uppercase tracking-wider cursor-pointer">Open Board</button>
                   </div>
-                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                     {tasks.length === 0 ? (
-                      <p className="text-slate-500 text-xs text-center py-8">Roster is empty. No care tasks assigned.</p>
+                      <p className="text-slate-500 text-xs text-center py-8">Care roster is clean.</p>
                     ) : tasks.filter(t => t.status !== 'Completed').slice(0, 4).map(t => (
-                      <div key={t._id} className="flex justify-between items-center p-3 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800">
+                      <div key={t._id} className={`flex justify-between items-center p-3 rounded-xl border ${
+                        isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'
+                      }`}>
                         <div className="flex items-center gap-3">
-                          <Circle size={14} className="text-slate-500 shrink-0" />
+                          <Circle size={14} className="text-slate-400 shrink-0" />
                           <div>
-                            <p className="text-xs font-extrabold">{t.title}</p>
-                            <p className="text-[10px] text-slate-500">Assigned worker: {t.assigned_to || 'Broadcast'}</p>
+                            <p className="text-xs font-bold">{t.title}</p>
+                            <p className="text-[10px] text-slate-400">Assigned: {t.assigned_to || 'General'}</p>
                           </div>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
@@ -812,19 +783,19 @@ function App() {
           )}
 
           {/* ───────────────── VIEW: CROPS REGISTER ───────────────── */}
-          {view === 'crops' && (
+          {activeTab === 'crops' && (
             <div className="space-y-6 animate-fade-in">
               <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-5 ${
-                theme === 'dark' ? 'border-slate-800' : 'border-slate-200'
+                isDark ? 'border-slate-800' : 'border-slate-200'
               }`}>
                 <div>
-                  <h3 className="text-lg font-black">Crops & Sector Register</h3>
-                  <p className="text-slate-500 text-xs">Analyze crop classification variety, field locations, yields, and cycles.</p>
+                  <h3 className="text-base md:text-lg font-black">Crops & Sector Registries</h3>
+                  <p className="text-slate-500 text-xs">Verify variety classification, physical plots, and yield development phases.</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <select 
                     className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 ${
-                      theme === 'dark' ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                      isDark ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
                     }`}
                     value={cropFilter}
                     onChange={e => setCropFilter(e.target.value)}
@@ -837,7 +808,7 @@ function App() {
                   </select>
                   <button 
                     onClick={() => { setEditingCrop(null); setCropForm({ name: '', variety: '', status: 'Growing', plant_date: '', harvest_date: '', field: '', yield_kg: '', notes: '' }); setShowCropModal(true); }}
-                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto shrink-0"
+                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer transition-transform hover:scale-105 ml-auto shrink-0"
                   >
                     <Plus size={16} /> Log Crop
                   </button>
@@ -848,29 +819,29 @@ function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {crops.length === 0 ? (
                   <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                   }`}>
                     No crops logged. Get started by planting your first crop.
                   </div>
                 ) : filteredCrops.length === 0 ? (
                   <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                   }`}>
                     No crops matching this phase filter were found.
                   </div>
                 ) : filteredCrops.map((c, idx) => (
-                  <div key={c._id} className={`border rounded-2xl p-5 shadow-md hover:border-slate-500/40 transition-all flex flex-col justify-between animate-fade-in ${
-                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  <div key={c._id} className={`border rounded-2xl p-5 shadow-sm hover:border-slate-400 dark:hover:border-slate-700/80 transition-all flex flex-col justify-between animate-fade-in ${
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                   }`} style={{animationDelay: `${idx * 0.05}s`}}>
                     <div className="space-y-4">
                       {/* Name & Badge */}
                       <div className="flex justify-between items-start gap-2">
                         <div>
-                          <h4 className="font-extrabold text-white dark:text-white light:text-slate-900 text-sm md:text-base tracking-tight">{c.name}</h4>
-                          <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Variety: {c.variety || 'Standard'}</p>
+                          <h4 className={`font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{c.name}</h4>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Variety: {c.variety || 'Standard'}</p>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
-                          c.status === 'Growing' ? 'bg-farm-900/30 text-farm-400 border border-farm-900/30' :
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                          c.status === 'Growing' ? 'bg-farm-900/20 text-farm-400 border border-farm-900/30' :
                           c.status === 'Harvesting' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/20' :
                           c.status === 'Completed' ? 'bg-purple-950/40 text-purple-400 border border-purple-900/20' :
                           'bg-slate-800 text-slate-400'
@@ -878,7 +849,9 @@ function App() {
                       </div>
 
                       {/* Info grid */}
-                      <div className="grid grid-cols-2 gap-3 text-[11px] border-y border-slate-800/10 dark:border-slate-800 py-3">
+                      <div className={`grid grid-cols-2 gap-3 text-xs border-y py-3 ${
+                        isDark ? 'border-slate-800' : 'border-slate-200/60'
+                      }`}>
                         <div className="space-y-1">
                           <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><MapPin size={10} /> Field/Area</p>
                           <p className="font-semibold">{c.field || 'Farm-wide'}</p>
@@ -899,7 +872,7 @@ function App() {
 
                       {c.notes && (
                         <p className={`text-[11px] line-clamp-2 p-2.5 rounded-lg border ${
-                          theme === 'dark' ? 'text-slate-400 bg-slate-900/40 border-slate-800' : 'text-slate-600 bg-slate-50 border-slate-200'
+                          isDark ? 'text-slate-400 bg-slate-900/40 border-slate-800' : 'text-slate-600 bg-slate-50 border-slate-200'
                         }`}>
                           {c.notes}
                         </p>
@@ -907,11 +880,13 @@ function App() {
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="flex justify-end gap-1.5 mt-5 pt-3 border-t border-slate-800/10 dark:border-slate-800">
-                      <button onClick={() => handleEditCrop(c)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg transition-colors">
+                    <div className={`flex justify-end gap-1.5 mt-5 pt-3 border-t ${
+                      isDark ? 'border-slate-800' : 'border-slate-200'
+                    }`}>
+                      <button onClick={() => handleEditCrop(c)} className="p-1.5 text-slate-400 hover:text-farm-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
                         <Edit3 size={14} />
                       </button>
-                      <button onClick={() => handleDeleteCrop(c._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
+                      <button onClick={() => handleDeleteCrop(c._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -922,19 +897,19 @@ function App() {
           )}
 
           {/* ───────────────── VIEW: FINANCIAL LEDGER ───────────────── */}
-          {view === 'finance' && (
+          {activeTab === 'finance' && (
             <div className="space-y-6 animate-fade-in">
               <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-5 ${
-                theme === 'dark' ? 'border-slate-800' : 'border-slate-200'
+                isDark ? 'border-slate-800' : 'border-slate-200'
               }`}>
                 <div>
-                  <h3 className="text-lg font-black">Financial Ledger</h3>
-                  <p className="text-slate-500 text-xs">Complete bookkeeping for crop seeds, fertilizers, tractor fuels, worker wages, and harvests.</p>
+                  <h3 className="text-base md:text-lg font-black">Financial Ledger Book</h3>
+                  <p className="text-slate-500 text-xs">Verify seed logistics, operational fuels, wages, and harvest sales ledger flows.</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <select 
                     className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 ${
-                      theme === 'dark' ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                      isDark ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
                     }`}
                     value={financeFilter}
                     onChange={e => setFinanceFilter(e.target.value)}
@@ -945,7 +920,7 @@ function App() {
                   </select>
                   <button 
                     onClick={() => { setEditingFinance(null); setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' }); setShowFinanceModal(true); }}
-                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto shrink-0"
+                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer transition-transform hover:scale-105 ml-auto shrink-0"
                   >
                     <Plus size={16} /> Log Entry
                   </button>
@@ -955,21 +930,21 @@ function App() {
               {/* Financial Breakdown Panel */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className={`border p-5 rounded-2xl shadow-sm ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Gross Revenue</p>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Gross Income</p>
                   <h4 className="text-2xl font-black text-farm-400 mt-1">${totalIncome.toLocaleString()}</h4>
                 </div>
                 <div className={`border p-5 rounded-2xl shadow-sm ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Expenditures</p>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Operational Expenditures</p>
                   <h4 className="text-2xl font-black text-red-400 mt-1">${totalExpense.toLocaleString()}</h4>
                 </div>
                 <div className={`border p-5 rounded-2xl shadow-sm ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Net Operations profit</p>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Net profit margin</p>
                   <h4 className={`text-2xl font-black mt-1 ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
                     ${netProfit.toLocaleString()}
                   </h4>
@@ -977,13 +952,13 @@ function App() {
               </div>
 
               {/* Finance list table */}
-              <div className={`border rounded-2xl overflow-hidden shadow-md ${
-                theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+              <div className={`border rounded-2xl overflow-hidden shadow-sm ${
+                isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
               }`}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead className={`text-slate-500 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b ${
-                      theme === 'dark' ? 'bg-[#121b2d] border-slate-800' : 'bg-slate-50 border-slate-200'
+                      isDark ? 'bg-[#121b2d] border-slate-800' : 'bg-slate-50 border-slate-200'
                     }`}>
                       <tr>
                         <th className="px-6 py-4">Date</th>
@@ -994,7 +969,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody className={`divide-y text-xs md:text-sm ${
-                      theme === 'dark' ? 'divide-slate-800' : 'divide-slate-200'
+                      isDark ? 'divide-slate-800 text-slate-300' : 'divide-slate-200 text-slate-700'
                     }`}>
                       {finance.length === 0 ? (
                         <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">Financial ledger contains no logs.</td></tr>
@@ -1003,22 +978,22 @@ function App() {
                       ) : filteredFinance.map(f => {
                         const linkedCrop = crops.find(c => c._id === f.crop_id);
                         return (
-                        <tr key={f._id} className="hover:bg-slate-800/10 dark:hover:bg-slate-900/30 transition-colors">
+                        <tr key={f._id} className="hover:bg-slate-100/40 dark:hover:bg-slate-900/30 transition-colors animate-fade-in">
                           <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{f.date}</td>
                           <td className="px-6 py-4">
-                            <div className="font-bold">{f.category}</div>
-                            {f.notes && <div className="text-[11px] text-slate-400 max-w-xs truncate">{f.notes}</div>}
+                            <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{f.category}</div>
+                            {f.notes && <div className="text-[11px] text-slate-400 max-w-xs truncate mt-0.5">{f.notes}</div>}
                           </td>
                           <td className="px-6 py-4">
                             {linkedCrop ? (
-                              <span className="inline-flex items-center gap-1.5 bg-farm-900/20 text-farm-400 border border-farm-900/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                              <span className="inline-flex items-center gap-1 bg-farm-900/20 text-farm-500 dark:text-farm-400 border border-farm-500/10 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
                                 <Sprout size={10} /> {linkedCrop.name}
                               </span>
                             ) : (
                               <span className="text-slate-400 text-xs">Farm-wide</span>
                             )}
                           </td>
-                          <td className={`px-6 py-4 text-right font-extrabold whitespace-nowrap ${f.type === 'expense' ? 'text-red-400' : 'text-farm-400'}`}>
+                          <td className={`px-6 py-4 text-right font-extrabold whitespace-nowrap ${f.type === 'expense' ? 'text-red-400' : 'text-farm-500 dark:text-farm-400'}`}>
                             <div className="inline-flex items-center gap-1">
                               {f.type === 'expense' ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
                               ${f.amount.toLocaleString()}
@@ -1026,10 +1001,10 @@ function App() {
                           </td>
                           <td className="px-6 py-4 text-right whitespace-nowrap">
                             <div className="inline-flex gap-1">
-                              <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg">
+                              <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg cursor-pointer">
                                 <Edit3 size={14} />
                               </button>
-                              <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg">
+                              <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg cursor-pointer">
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -1045,19 +1020,19 @@ function App() {
           )}
 
           {/* ───────────────── VIEW: CARE & HEALTH PORTAL ───────────────── */}
-          {view === 'tasks' && (
+          {activeTab === 'tasks' && (
             <div className="space-y-6 animate-fade-in">
               <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-5 ${
-                theme === 'dark' ? 'border-slate-800' : 'border-slate-200'
+                isDark ? 'border-slate-800' : 'border-slate-200'
               }`}>
                 <div>
-                  <h3 className="text-lg font-black">Crop Care & Health Portal</h3>
+                  <h3 className="text-base md:text-lg font-black">Crop Care & Health Portal</h3>
                   <p className="text-slate-500 text-xs">Assign and monitor soil checkups, crop watering schedules, and organic pesticide treatments.</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <select 
                     className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 ${
-                      theme === 'dark' ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                      isDark ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
                     }`}
                     value={taskFilter}
                     onChange={e => setTaskFilter(e.target.value)}
@@ -1068,7 +1043,7 @@ function App() {
                   </select>
                   <button 
                     onClick={() => { setEditingTask(null); setTaskForm({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' }); setShowTaskModal(true); }}
-                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto shrink-0"
+                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer transition-transform hover:scale-105 ml-auto shrink-0"
                   >
                     <Plus size={16} /> Schedule Care
                   </button>
@@ -1079,19 +1054,19 @@ function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {tasks.length === 0 ? (
                   <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                   }`}>
                     Duty care roster is currently clean.
                   </div>
                 ) : filteredTasks.length === 0 ? (
                   <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                   }`}>
                     No duty assignments found matching this status.
                   </div>
                 ) : filteredTasks.map((t, idx) => (
-                  <div key={t._id} className={`border rounded-2xl p-5 shadow-md flex flex-col justify-between ${
-                    theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  <div key={t._id} className={`border rounded-2xl p-5 shadow-sm flex flex-col justify-between ${
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                   }`} style={{
                     borderLeft: `4px solid ${t.status === 'Completed' ? '#475569' : t.priority === 'High' ? '#ef4444' : '#22c55e'}`,
                     opacity: t.status === 'Completed' ? 0.6 : 1,
@@ -1114,35 +1089,39 @@ function App() {
 
                       {/* Main Title */}
                       <div>
-                        <h4 className={`text-sm md:text-base font-black ${t.status === 'Completed' ? 'line-through text-slate-500' : ''}`}>{t.title}</h4>
+                        <h4 className={`text-sm md:text-base font-black ${t.status === 'Completed' ? 'line-through text-slate-500' : isDark ? 'text-white' : 'text-slate-900'}`}>{t.title}</h4>
                         {t.notes && <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{t.notes}</p>}
                       </div>
 
                       {/* Info lines */}
-                      <div className="border-t border-slate-800/10 dark:border-slate-800/60 pt-3 space-y-1.5 text-xs text-slate-400">
-                        <p className="flex items-center gap-2"><Users size={12} className="text-slate-500" /> Operative: <span className="font-semibold">{t.assigned_to || 'Broadcast Duty'}</span></p>
-                        <p className="flex items-center gap-2"><Calendar size={12} className="text-slate-500" /> Due Date: <span className="font-semibold">{t.due_date || 'None / Ongoing'}</span></p>
+                      <div className={`border-t pt-3 space-y-1.5 text-xs ${
+                        isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200/60 text-slate-500'
+                      }`}>
+                        <p className="flex items-center gap-2"><Users size={12} className="text-slate-400" /> Worker: <span className="font-semibold text-slate-700 dark:text-slate-200">{t.assigned_to || 'Broadcast Duty'}</span></p>
+                        <p className="flex items-center gap-2"><Calendar size={12} className="text-slate-400" /> Due Date: <span className="font-semibold text-slate-700 dark:text-slate-200">{t.due_date || 'None / Ongoing'}</span></p>
                       </div>
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="flex justify-between items-center mt-5 pt-3 border-t border-slate-800/10 dark:border-slate-800/60">
+                    <div className={`flex justify-between items-center mt-5 pt-3 border-t ${
+                      isDark ? 'border-slate-800/60' : 'border-slate-200/60'
+                    }`}>
                       {t.status === 'Pending' ? (
                         <button 
                           onClick={() => handleCompleteTask(t._id)}
-                          className="text-xs text-farm-500 hover:text-farm-400 font-bold flex items-center gap-1.5 transition-colors"
+                          className="text-xs text-farm-500 hover:text-farm-400 font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                         >
                           <CheckCircle size={14} /> Complete
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle size={12} /> Duties Completed</span>
+                        <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle size={12} /> Duties Completed</span>
                       )}
                       
                       <div className="flex gap-1">
-                        <button onClick={() => handleEditTask(t)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg transition-colors">
+                        <button onClick={() => handleEditTask(t)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg transition-colors cursor-pointer">
                           <Edit3 size={14} />
                         </button>
-                        <button onClick={() => handleDeleteTask(t._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
+                        <button onClick={() => handleDeleteTask(t._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -1154,10 +1133,12 @@ function App() {
           )}
 
           {/* ───────────────── VIEW: MONTHLY SUMMARY ───────────────── */}
-          {view === 'summary' && (
+          {activeTab === 'summary' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="border-b border-slate-800 pb-5">
-                <h3 className="text-lg font-black text-white dark:text-white light:text-slate-900">Monthly Performance Summary</h3>
+              <div className={`border-b pb-5 ${
+                isDark ? 'border-slate-800' : 'border-slate-200'
+              }`}>
+                <h3 className="text-base md:text-lg font-black">Monthly Performance Summary</h3>
                 <p className="text-slate-500 text-xs">Aggregated analytics and development trend data for crops yield and operational ledger budgets.</p>
               </div>
 
@@ -1165,23 +1146,23 @@ function App() {
                 
                 {/* Operations Health Checklist */}
                 <div className={`border p-6 rounded-2xl shadow-sm space-y-4 ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800 pb-3">Operational Milestones Checklist</h4>
+                  <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800/10 dark:border-slate-800 pb-3">Operational Milestones</h4>
                   <ul className="space-y-3 text-xs md:text-sm">
                     <li className="flex items-center gap-3">
-                      <CheckCircle size={16} className="text-farm-400" />
+                      <CheckCircle size={16} className="text-farm-500" />
                       <span>Planted Sectors Fully Registerized ({crops.length} items)</span>
                     </li>
                     <li className="flex items-center gap-3">
-                      <CheckCircle size={16} className="text-farm-400" />
+                      <CheckCircle size={16} className="text-farm-500" />
                       <span>Ledger flow bookkeeping validated and up-to-date</span>
                     </li>
                     <li className="flex items-center gap-3">
                       {tasks.filter(t => t.status === 'Pending').length === 0 ? (
-                        <CheckCircle size={16} className="text-farm-400" />
+                        <CheckCircle size={16} className="text-farm-500" />
                       ) : (
-                        <Circle size={16} className="text-slate-500" />
+                        <Circle size={16} className="text-slate-400" />
                       )}
                       <span>All active duty roster tasks completed ({tasks.filter(t => t.status === 'Pending').length} pending)</span>
                     </li>
@@ -1190,9 +1171,9 @@ function App() {
 
                 {/* Ledger Breakdown */}
                 <div className={`border p-6 rounded-2xl shadow-sm space-y-4 ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800 pb-3">Yield Classification Yields</h4>
+                  <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800/10 dark:border-slate-800 pb-3">Yield Classification</h4>
                   <div className="space-y-3">
                     {crops.length === 0 ? (
                       <p className="text-slate-500 text-xs text-center py-4">No yield telemetry recorded.</p>
@@ -1200,7 +1181,7 @@ function App() {
                       return (
                         <div key={c._id} className="flex justify-between items-center text-xs md:text-sm">
                           <span className="font-semibold">{c.name} ({c.variety || 'variety'})</span>
-                          <span className="font-bold text-farm-400">{c.yield_kg.toLocaleString()} kg</span>
+                          <span className="font-bold text-farm-600 dark:text-farm-400">{c.yield_kg.toLocaleString()} kg</span>
                         </div>
                       );
                     })}
@@ -1213,15 +1194,15 @@ function App() {
 
               {/* Monthly Ledger Flow Timeline */}
               <div className={`border p-6 rounded-2xl shadow-sm ${
-                theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
               }`}>
-                <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800 pb-3 mb-4">Operations Ledger Log History</h4>
+                <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800/10 dark:border-slate-800 pb-3 mb-4">Operations Ledger Log History</h4>
                 <div className="space-y-3">
                   {finance.map((f, idx) => (
-                    <div key={f._id} className="flex justify-between items-center text-xs md:text-sm p-2.5 rounded-lg hover:bg-slate-800/10 dark:hover:bg-slate-900/30">
+                    <div key={f._id} className="flex justify-between items-center text-xs md:text-sm p-2.5 rounded-lg hover:bg-slate-800/10 dark:hover:bg-slate-900/30 animate-fade-in">
                       <span className="text-slate-500">{f.date}</span>
                       <span className="font-semibold flex-1 ml-4">{f.category}</span>
-                      <span className={`font-bold ${f.type === 'expense' ? 'text-red-400' : 'text-farm-400'}`}>
+                      <span className={`font-bold ${f.type === 'expense' ? 'text-red-400' : 'text-farm-600 dark:text-farm-400'}`}>
                         {f.type === 'expense' ? '-' : '+'}${f.amount.toLocaleString()}
                       </span>
                     </div>
@@ -1235,16 +1216,18 @@ function App() {
           )}
 
           {/* ───────────────── VIEW: SETTINGS & ADMIN ───────────────── */}
-          {view === 'settings' && (
+          {activeTab === 'settings' && (
             <div className="space-y-8 animate-fade-in">
-              <div className="border-b border-slate-800 pb-5">
-                <h3 className="text-lg font-black">Settings & System Admin Portal</h3>
+              <div className={`border-b pb-5 ${
+                isDark ? 'border-slate-800' : 'border-slate-200'
+              }`}>
+                <h3 className="text-base md:text-lg font-black">Settings & System Admin Portal</h3>
                 <p className="text-slate-500 text-xs">Configure responsive layouts, account passwords, database atomic backups, and worker registries.</p>
               </div>
 
               {/* Typography Adjuster */}
               <div className={`border p-6 rounded-2xl shadow-md space-y-4 ${
-                theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
               }`}>
                 <div className="flex items-center gap-3 border-b border-slate-800/10 dark:border-slate-800 pb-3">
                   <Type className="text-farm-400" />
@@ -1258,10 +1241,10 @@ function App() {
                     <button 
                       key={size}
                       onClick={() => handleTextSizeChange(size)}
-                      className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
+                      className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
                         textSize === size 
                           ? 'bg-farm-600 border-farm-500 text-white' 
-                          : theme === 'dark'
+                          : isDark
                             ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
                             : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                       }`}
@@ -1275,7 +1258,7 @@ function App() {
               {/* Worker Accounts Management Panel (Admin Only) */}
               {userRole === 'admin' ? (
                 <div className={`border rounded-2xl p-6 shadow-md space-y-6 ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
                   <div className="flex items-center gap-3 border-b border-slate-800/10 dark:border-slate-800 pb-4">
                     <Users className="text-farm-400" />
@@ -1316,7 +1299,7 @@ function App() {
                         onChange={e => setNewWorkerForm({...newWorkerForm, password: e.target.value})}
                       />
                     </div>
-                    <button className="py-2 px-4 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all">
+                    <button className="py-2 px-4 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer">
                       <UserPlus size={14} /> Add Worker
                     </button>
                   </form>
@@ -1332,7 +1315,7 @@ function App() {
                             <p className="text-xs text-slate-500">{u.email}</p>
                           </div>
                           {u.username !== 'admin' && (
-                            <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-slate-400 hover:text-red-400 rounded-lg">
+                            <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-slate-400 hover:text-red-400 rounded-lg cursor-pointer">
                               <Trash2 size={16} />
                             </button>
                           )}
@@ -1343,7 +1326,7 @@ function App() {
                 </div>
               ) : (
                 <div className={`border p-6 rounded-2xl shadow-md text-slate-500 flex items-center gap-3 ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
                   <ShieldCheck size={20} />
                   <p className="text-xs font-medium">Worker account access level detected. Worker registry management panel is restricted to Administrators.</p>
@@ -1353,7 +1336,7 @@ function App() {
               {/* Database Backup & Restore Center (Admin Only) */}
               {userRole === 'admin' ? (
                 <div className={`border rounded-2xl p-6 shadow-md space-y-6 ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
                   <div className="flex items-center gap-3 border-b border-slate-800/10 dark:border-slate-800 pb-4">
                     <Database className="text-farm-400" />
@@ -1368,7 +1351,7 @@ function App() {
                     <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
                       <h5 className="text-sm font-bold">Database Backup Export</h5>
                       <p className="text-xs text-slate-500 leading-relaxed">Download a single-file atomic JSON backup containing all crops, financial logs, duties rosters, and worker lists.</p>
-                      <button onClick={handleExportBackup} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all">
+                      <button onClick={handleExportBackup} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer">
                         <Database size={14} /> Download JSON Backup
                       </button>
                     </div>
@@ -1386,7 +1369,7 @@ function App() {
                 </div>
               ) : (
                 <div className={`border p-6 rounded-2xl shadow-md text-slate-500 flex items-center gap-3 ${
-                  theme === 'dark' ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
                   <ShieldCheck size={20} />
                   <p className="text-xs font-medium">Worker account access level detected. Database backup and restore center is restricted to Administrators.</p>
@@ -1396,7 +1379,7 @@ function App() {
           )}
 
         </div>
-      </main>
+      </div>
 
       {/* ─── MODALS ─── */}
 
@@ -1444,7 +1427,7 @@ function App() {
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Current Cycle Status</label>
                 <select 
-                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
                   value={cropForm.status}
                   onChange={e => setCropForm({...cropForm, status: e.target.value})}
                 >
@@ -1461,8 +1444,8 @@ function App() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setShowCropModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md">
+                <button type="button" onClick={() => setShowCropModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider cursor-pointer">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md cursor-pointer">
                   <CheckCircle size={14} /> {editingCrop ? "Update Crop" : "Plant Crop"}
                 </button>
               </div>
@@ -1483,7 +1466,7 @@ function App() {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Ledger Flow *</label>
                   <select 
-                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
                     value={finForm.type}
                     onChange={e => setFinForm({...finForm, type: e.target.value})}
                   >
@@ -1522,8 +1505,8 @@ function App() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setShowFinanceModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md">
+                <button type="button" onClick={() => setShowFinanceModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider cursor-pointer">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md cursor-pointer">
                   <CheckCircle size={14} /> {editingFinance ? "Update Ledger" : "Record Book Log"}
                 </button>
               </div>
@@ -1562,7 +1545,7 @@ function App() {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Priority Level</label>
                   <select 
-                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
                     value={taskForm.priority}
                     onChange={e => setTaskForm({...taskForm, priority: e.target.value})}
                   >
@@ -1575,7 +1558,7 @@ function App() {
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Duty Due Date</label>
-                <input type="date" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={taskForm.due_date} onChange={e => setTaskForm({...taskForm, due_date: e.target.value})} />
+                <input type="date" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium" value={taskForm.due_date} onChange={e => setTaskForm({...taskForm, due_date: e.target.value})} />
               </div>
 
               <div>
@@ -1584,8 +1567,8 @@ function App() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setShowTaskModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md">
+                <button type="button" onClick={() => setShowTaskModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider cursor-pointer">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md cursor-pointer">
                   <CheckCircle size={14} /> {editingTask ? "Update Assignment" : "Assign Duty"}
                 </button>
               </div>
