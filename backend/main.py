@@ -97,6 +97,35 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     })
     return {"access_token": token, "token_type": "bearer", "role": user.get("role", "worker")}
 
+# --- USER MANAGEMENT ROUTES (ADMIN ONLY) ---
+@app.get("/users")
+async def get_users(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin authorization required")
+    users = await users_col.find().to_list(100)
+    for u in users:
+        u["_id"] = str(u["_id"])
+        if "password" in u:
+            del u["password"]
+    return users
+
+@app.delete("/users/{user_id}")
+async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin authorization required")
+    try:
+        obj_id = ObjectId(user_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user ID format")
+    
+    if str(current_user["_id"]) == user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot delete your own account")
+        
+    result = await users_col.delete_one({"_id": obj_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return {"status": "ok"}
+
 # --- CROP ROUTES ---
 @app.get("/crops")
 async def get_crops(current_user: dict = Depends(get_current_user)):
@@ -109,6 +138,19 @@ async def get_crops(current_user: dict = Depends(get_current_user)):
 async def add_crop(crop: Crop, current_user: dict = Depends(get_current_user)):
     crop_dict = crop.model_dump()
     await crops_col.insert_one(crop_dict)
+    return {"status": "ok"}
+
+@app.put("/crops/{crop_id}")
+async def update_crop(crop_id: str, crop: Crop, current_user: dict = Depends(get_current_user)):
+    try:
+        obj_id = ObjectId(crop_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid crop ID format")
+    
+    crop_dict = crop.model_dump()
+    result = await crops_col.replace_one({"_id": obj_id}, crop_dict)
+    if result.matched_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Crop not found")
     return {"status": "ok"}
 
 @app.patch("/crops/{crop_id}")
@@ -149,8 +191,24 @@ async def get_finance(current_user: dict = Depends(get_current_user)):
 @app.post("/finance", status_code=status.HTTP_201_CREATED)
 async def add_finance(entry: FinanceEntry, current_user: dict = Depends(get_current_user)):
     entry_dict = entry.model_dump()
-    entry_dict["date"] = str(datetime.now().date())
+    if not entry_dict.get("date"):
+        entry_dict["date"] = str(datetime.now().date())
     await finance_col.insert_one(entry_dict)
+    return {"status": "ok"}
+
+@app.put("/finance/{finance_id}")
+async def update_finance(finance_id: str, entry: FinanceEntry, current_user: dict = Depends(get_current_user)):
+    try:
+        obj_id = ObjectId(finance_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid finance ID format")
+    
+    entry_dict = entry.model_dump()
+    if not entry_dict.get("date"):
+        entry_dict["date"] = str(datetime.now().date())
+    result = await finance_col.replace_one({"_id": obj_id}, entry_dict)
+    if result.matched_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finance entry not found")
     return {"status": "ok"}
 
 @app.delete("/finance/{finance_id}")
@@ -178,6 +236,19 @@ async def add_task(task: Task, current_user: dict = Depends(get_current_user)):
     task_dict = task.model_dump()
     task_dict["status"] = "Pending"
     await tasks_col.insert_one(task_dict)
+    return {"status": "ok"}
+
+@app.put("/tasks/{task_id}")
+async def update_task(task_id: str, task: Task, current_user: dict = Depends(get_current_user)):
+    try:
+        obj_id = ObjectId(task_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid task ID format")
+    
+    task_dict = task.model_dump()
+    result = await tasks_col.replace_one({"_id": obj_id}, task_dict)
+    if result.matched_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return {"status": "ok"}
 
 @app.patch("/tasks/{task_id}")
@@ -208,4 +279,64 @@ async def delete_task(task_id: str, current_user: dict = Depends(get_current_use
     result = await tasks_col.delete_one({"_id": obj_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Task not found")
+    return {"status": "ok"}
+
+# --- BACKUP & RESTORE ROUTES (ADMIN ONLY) ---
+@app.get("/backup")
+async def get_backup(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin authorization required")
+    crops_list = await crops_col.find().to_list(500)
+    for c in crops_list: c["_id"] = str(c["_id"])
+    finance_list = await finance_col.find().to_list(500)
+    for f in finance_list: f["_id"] = str(f["_id"])
+    tasks_list = await tasks_col.find().to_list(500)
+    for t in tasks_list: t["_id"] = str(t["_id"])
+    users_list = await users_col.find().to_list(100)
+    for u in users_list:
+        u["_id"] = str(u["_id"])
+        if "password" in u: del u["password"]
+    return {
+        "crops": crops_list,
+        "finance": finance_list,
+        "tasks": tasks_list,
+        "users": users_list
+    }
+
+@app.post("/restore")
+async def restore_backup(payload: dict, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin authorization required")
+    
+    crops_data = payload.get("crops", [])
+    finance_data = payload.get("finance", [])
+    tasks_data = payload.get("tasks", [])
+    
+    if not crops_data and not finance_data and not tasks_data:
+        raise HTTPException(status_code=400, detail="Backup has no valid data to restore")
+    
+    if crops_data:
+        await crops_col.delete_many({})
+        for c in crops_data:
+            if "_id" in c:
+                try: c["_id"] = ObjectId(c["_id"])
+                except Exception: del c["_id"]
+        await crops_col.insert_many(crops_data)
+        
+    if finance_data:
+        await finance_col.delete_many({})
+        for f in finance_data:
+            if "_id" in f:
+                try: f["_id"] = ObjectId(f["_id"])
+                except Exception: del f["_id"]
+        await finance_col.insert_many(finance_data)
+        
+    if tasks_data:
+        await tasks_col.delete_many({})
+        for t in tasks_data:
+            if "_id" in t:
+                try: t["_id"] = ObjectId(t["_id"])
+                except Exception: del t["_id"]
+        await tasks_col.insert_many(tasks_data)
+        
     return {"status": "ok"}

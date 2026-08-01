@@ -16,30 +16,61 @@ import {
   AlertTriangle,
   Send,
   Loader,
-  Circle
+  Circle,
+  LayoutDashboard,
+  Settings,
+  Users,
+  Database,
+  ArrowUpRight,
+  ArrowDownRight,
+  Edit3,
+  X,
+  ShieldCheck,
+  Tag,
+  MapPin,
+  Scale
 } from 'lucide-react';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
-  const [view, setView] = useState('crops'); 
+  const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'worker');
+  const [username, setUsername] = useState(localStorage.getItem('username') || 'Worker');
+  
+  const [view, setView] = useState('dashboard'); 
   const [crops, setCrops] = useState([]);
   const [finance, setFinance] = useState([]);
   const [tasks, setTasks] = useState([]);
-  
-  // Auth Form State
-  const [isRegister, setIsRegister] = useState(false);
-  const [authForm, setAuthForm] = useState({ username: '', email: '', password: '' });
-
-  // Input Forms State
-  const [cropName, setCropName] = useState('');
-  const [finForm, setFinForm] = useState({ cat: '', amt: '', type: 'expense' });
-  const [taskName, setTaskName] = useState('');
+  const [users, setUsers] = useState([]); // Worker management (admin only)
   
   // Loading & action locks
   const [loading, setLoading] = useState(false);
-  const [actionId, setActionId] = useState(null); // Tracks currently deleting/updating ID
+  const [actionId, setActionId] = useState(null); 
   
-  // Feedback alerts
+  // Modals
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [showFinanceModal, setShowFinanceModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  
+  // Edit records storage
+  const [editingCrop, setEditingCrop] = useState(null);
+  const [editingFinance, setEditingFinance] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
+
+  // Form states
+  const [authForm, setAuthForm] = useState({ username: '', email: '', password: '', role: 'worker' });
+  const [isRegister, setIsRegister] = useState(false);
+  
+  const [cropForm, setCropForm] = useState({ name: '', variety: '', status: 'Growing', plant_date: '', harvest_date: '', field: '', yield_kg: '', notes: '' });
+  const [finForm, setFinForm] = useState({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' });
+  const [taskForm, setTaskForm] = useState({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' });
+  const [newWorkerForm, setNewWorkerForm] = useState({ username: '', email: '', password: '', role: 'worker' });
+
+  // Filter States
+  const [cropFilter, setCropFilter] = useState('all');
+  const [financeFilter, setFinanceFilter] = useState('all');
+  const [taskFilter, setTaskFilter] = useState('all');
+
+  // Feedback Alert
   const [alertMsg, setAlertMsg] = useState({ text: '', isError: false });
 
   const showAlert = (text, isError = false) => {
@@ -50,179 +81,259 @@ function App() {
   useEffect(() => { 
     if (token) { 
       setLoading(true);
-      Promise.all([loadCrops(), loadFinance(), loadTasks()])
-        .finally(() => setLoading(false));
+      refreshData().finally(() => setLoading(false));
     } 
   }, [token]);
 
-  const loadCrops = () => {
-    return api.getCrops()
-      .then(res => setCrops(res.data))
-      .catch(err => {
-        console.error("Crops loading failed", err);
-        if (err.response?.status === 401) handleLogout();
-      });
-  };
-
-  const loadFinance = () => {
-    return api.getFinance()
-      .then(res => setFinance(res.data))
-      .catch(err => {
-        console.error("Finance loading failed", err);
-        if (err.response?.status === 401) handleLogout();
-      });
-  };
-
-  const loadTasks = () => {
-    return api.getTasks()
-      .then(res => setTasks(res.data))
-      .catch(err => {
-        console.error("Tasks loading failed", err);
-        if (err.response?.status === 401) handleLogout();
-      });
-  };
-
-  const handleAuthSubmit = async (e) => {
-    e.preventDefault();
-    if (!authForm.email || !authForm.password || (isRegister && !authForm.username)) {
-      showAlert("Please fill in all required fields.", true);
-      return;
-    }
-
-    setLoading(true);
+  const refreshData = async () => {
     try {
-      if (isRegister) {
-        await api.signup(authForm.username, authForm.email, authForm.password);
-        showAlert("Account created successfully! Please log in.");
-        setIsRegister(false);
-      } else {
-        const res = await api.login(authForm.email, authForm.password);
-        localStorage.setItem('token', res.data.access_token);
-        setToken(res.data.access_token);
-        showAlert("Logged in successfully!");
+      const cropsRes = await api.getCrops(); setCrops(cropsRes.data);
+      const finRes = await api.getFinance(); setFinance(finRes.data);
+      const tasksRes = await api.getTasks(); setTasks(tasksRes.data);
+      if (userRole === 'admin') {
+        const usersRes = await api.getUsers(); setUsers(usersRes.data);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.detail || "Authentication failed. Please verify credentials.";
-      showAlert(errMsg, true);
-    } finally {
-      setLoading(false);
+      console.error("Data refresh failed:", err);
+      if (err.response?.status === 401) handleLogout();
     }
   };
 
   const handleLogout = () => {
     localStorage.clear();
     setToken(null);
+    setUserRole('worker');
+    setUsername('Worker');
     window.location.reload();
   };
 
-  // --- Actions ---
-  const handleAddCrop = async (e) => {
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    if (!cropName.trim()) return showAlert("Crop name cannot be empty.", true);
+    if (!authForm.email || !authForm.password || (isRegister && !authForm.username)) {
+      return showAlert("Please fill in all required fields.", true);
+    }
+    setLoading(true);
     try {
-      await api.addCrop({ name: cropName.trim(), status: 'Growing' });
-      setCropName(''); 
-      loadCrops();
-      showAlert("Crop added successfully!");
+      if (isRegister) {
+        await api.signup(authForm.username, authForm.email, authForm.password, authForm.role);
+        showAlert("Account created successfully! Please log in.");
+        setIsRegister(false);
+      } else {
+        const res = await api.login(authForm.email, authForm.password);
+        localStorage.setItem('token', res.data.access_token);
+        localStorage.setItem('role', res.data.role);
+        
+        // Fetch users to find matching username
+        const cleanName = authForm.email.split('@')[0];
+        localStorage.setItem('username', cleanName);
+
+        setToken(res.data.access_token);
+        setUserRole(res.data.role);
+        setUsername(cleanName);
+        showAlert("Welcome back to AgriFarm Command!");
+      }
     } catch (err) {
-      showAlert("Failed to add crop. Server error.", true);
+      showAlert(err.response?.data?.detail || "Authentication failed.", true);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdateCropStatus = async (id, status) => {
+  // --- Worker Management (Admin Only) ---
+  const handleAddWorker = async (e) => {
+    e.preventDefault();
+    if (!newWorkerForm.username || !newWorkerForm.email || !newWorkerForm.password) {
+      return showAlert("Please complete all worker fields.", true);
+    }
+    try {
+      await api.signup(newWorkerForm.username, newWorkerForm.email, newWorkerForm.password, newWorkerForm.role);
+      showAlert(`Worker account '${newWorkerForm.username}' registered!`);
+      setNewWorkerForm({ username: '', email: '', password: '', role: 'worker' });
+      refreshData();
+    } catch (err) {
+      showAlert(err.response?.data?.detail || "Failed to add worker account.", true);
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!confirm("Are you sure you want to delete this worker account? They will lose access immediately.")) return;
     setActionId(id);
     try {
-      await api.updateCropStatus(id, status);
-      loadCrops();
-      showAlert(`Crop status updated to ${status}!`);
+      await api.deleteUser(id);
+      showAlert("Worker account deleted successfully.");
+      refreshData();
     } catch (err) {
-      showAlert("Failed to update status.", true);
+      showAlert(err.response?.data?.detail || "Failed to delete user.", true);
     } finally {
       setActionId(null);
     }
+  };
+
+  // --- Crops Actions ---
+  const handleCropSubmit = async (e) => {
+    e.preventDefault();
+    if (!cropForm.name.trim()) return showAlert("Crop name is required.", true);
+    try {
+      const payload = {
+        ...cropForm,
+        yield_kg: cropForm.yield_kg ? parseFloat(cropForm.yield_kg) : 0.0
+      };
+      if (editingCrop) {
+        await api.updateCrop(editingCrop._id, payload);
+        showAlert("Crop updated!");
+      } else {
+        await api.addCrop(payload);
+        showAlert("Crop successfully planted & logged!");
+      }
+      setCropForm({ name: '', variety: '', status: 'Growing', plant_date: '', harvest_date: '', field: '', yield_kg: '', notes: '' });
+      setEditingCrop(null);
+      setShowCropModal(false);
+      refreshData();
+    } catch (err) {
+      showAlert("Failed to save crop entry.", true);
+    }
+  };
+
+  const handleEditCrop = (crop) => {
+    setEditingCrop(crop);
+    setCropForm({
+      name: crop.name,
+      variety: crop.variety || '',
+      status: crop.status || 'Growing',
+      plant_date: crop.plant_date || '',
+      harvest_date: crop.harvest_date || '',
+      field: crop.field || '',
+      yield_kg: crop.yield_kg || '',
+      notes: crop.notes || ''
+    });
+    setShowCropModal(true);
   };
 
   const handleDeleteCrop = async (id) => {
-    if (!confirm("Are you sure you want to remove this crop from the farm list?")) return;
+    if (!confirm("Delete this crop and all associated history? This cannot be undone.")) return;
     setActionId(id);
     try {
       await api.deleteCrop(id);
-      loadCrops();
-      showAlert("Crop removed.");
+      showAlert("Crop record removed.");
+      refreshData();
     } catch (err) {
-      showAlert("Failed to delete crop.", true);
+      showAlert("Failed to remove crop.", true);
     } finally {
       setActionId(null);
     }
   };
 
-  const handleAddFinance = async (e) => {
+  // --- Finance Actions ---
+  const handleFinanceSubmit = async (e) => {
     e.preventDefault();
-    if (!finForm.cat.trim() || !finForm.amt) {
-      return showAlert("Please provide an item description and amount.", true);
+    if (!finForm.category.trim() || !finForm.amount) {
+      return showAlert("Please complete description and amount fields.", true);
     }
-    const amtFloat = parseFloat(finForm.amt);
-    if (isNaN(amtFloat) || amtFloat <= 0) {
-      return showAlert("Amount must be a positive number.", true);
-    }
+    const amt = parseFloat(finForm.amount);
+    if (isNaN(amt) || amt <= 0) return showAlert("Amount must be a positive number.", true);
 
     try {
-      await api.addFinance({ category: finForm.cat.trim(), amount: amtFloat, type: finForm.type });
-      setFinForm({ cat: '', amt: '', type: 'expense' }); 
-      loadFinance();
-      showAlert("Finance log saved!");
+      const payload = {
+        ...finForm,
+        amount: amt,
+        crop_id: finForm.crop_id === 'farm-wide' ? null : finForm.crop_id
+      };
+      if (editingFinance) {
+        await api.updateFinance(editingFinance._id, payload);
+        showAlert("Ledger transaction updated!");
+      } else {
+        await api.addFinance(payload);
+        showAlert("Transaction successfully recorded!");
+      }
+      setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' });
+      setEditingFinance(null);
+      setShowFinanceModal(false);
+      refreshData();
     } catch (err) {
-      showAlert("Failed to save finance log.", true);
+      showAlert("Failed to save ledger entry.", true);
     }
+  };
+
+  const handleEditFinance = (f) => {
+    setEditingFinance(f);
+    setFinForm({
+      category: f.category,
+      amount: f.amount.toString(),
+      type: f.type,
+      crop_id: f.crop_id || 'farm-wide',
+      notes: f.notes || ''
+    });
+    setShowFinanceModal(true);
   };
 
   const handleDeleteFinance = async (id) => {
-    if (!confirm("Delete this financial log?")) return;
+    if (!confirm("Remove this transaction log?")) return;
     setActionId(id);
     try {
       await api.deleteFinance(id);
-      loadFinance();
-      showAlert("Financial entry deleted.");
+      showAlert("Transaction removed from ledger.");
+      refreshData();
     } catch (err) {
-      showAlert("Failed to delete finance log.", true);
+      showAlert("Failed to delete transaction.", true);
     } finally {
       setActionId(null);
     }
   };
 
-  const handleAddTask = async (e) => {
+  // --- Task Actions ---
+  const handleTaskSubmit = async (e) => {
     e.preventDefault();
-    if (!taskName.trim()) return showAlert("Task description cannot be empty.", true);
+    if (!taskForm.title.trim()) return showAlert("Task title/assignment is required.", true);
     try {
-      await api.addTask({ title: taskName.trim() });
-      setTaskName(''); 
-      loadTasks();
-      showAlert("Task assigned successfully!");
+      const payload = { ...taskForm, status: editingTask ? editingTask.status : 'Pending' };
+      if (editingTask) {
+        await api.updateTask(editingTask._id, payload);
+        showAlert("Duty roster assignment updated!");
+      } else {
+        await api.addTask(payload);
+        showAlert("Task added to duty roster!");
+      }
+      setTaskForm({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' });
+      setEditingTask(null);
+      setShowTaskModal(false);
+      refreshData();
     } catch (err) {
-      showAlert("Failed to assign task.", true);
+      showAlert("Failed to save assignment.", true);
     }
+  };
+
+  const handleEditTask = (t) => {
+    setEditingTask(t);
+    setTaskForm({
+      title: t.title,
+      due_date: t.due_date || '',
+      assigned_to: t.assigned_to || '',
+      priority: t.priority || 'Medium',
+      notes: t.notes || ''
+    });
+    setShowTaskModal(true);
   };
 
   const handleCompleteTask = async (id) => {
     setActionId(id);
     try {
       await api.completeTask(id);
-      loadTasks();
-      showAlert("Task marked as completed!");
+      showAlert("Task completed! Confetti on the farm!");
+      refreshData();
     } catch (err) {
-      showAlert("Failed to complete task.", true);
+      showAlert("Failed to update task status.", true);
     } finally {
       setActionId(null);
     }
   };
 
   const handleDeleteTask = async (id) => {
-    if (!confirm("Remove this task entirely?")) return;
+    if (!confirm("Delete this duty roster task?")) return;
     setActionId(id);
     try {
       await api.deleteTask(id);
-      loadTasks();
-      showAlert("Task removed.");
+      showAlert("Task deleted.");
+      refreshData();
     } catch (err) {
       showAlert("Failed to delete task.", true);
     } finally {
@@ -230,410 +341,1020 @@ function App() {
     }
   };
 
+  // --- Backup & Restore (Admin Only) ---
+  const handleExportBackup = async () => {
+    try {
+      const res = await api.getBackup();
+      const jsonStr = JSON.stringify(res.data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `agrifarm-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showAlert("JSON Database Backup exported successfully!");
+    } catch (err) {
+      showAlert("Backup export failed.", true);
+    }
+  };
+
+  const handleImportBackup = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const payload = JSON.parse(event.target.result);
+        await api.restoreBackup(payload);
+        showAlert("Database restored successfully!");
+        refreshData();
+      } catch (err) {
+        showAlert("Database restore failed. Ensure valid JSON structure.", true);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // --- Helper Calculations ---
+  const totalIncome = finance.filter(f => f.type === 'income').reduce((sum, item) => sum + item.amount, 0);
+  const totalExpense = finance.filter(f => f.type === 'expense').reduce((sum, item) => sum + item.amount, 0);
+  const netProfit = totalIncome - totalExpense;
+
+  const filteredCrops = crops.filter(c => cropFilter === 'all' ? true : c.status === cropFilter);
+  const filteredFinance = finance.filter(f => financeFilter === 'all' ? true : f.type === financeFilter);
+  const filteredTasks = tasks.filter(t => {
+    if (taskFilter === 'all') return true;
+    if (taskFilter === 'Pending') return t.status === 'Pending';
+    if (taskFilter === 'Completed') return t.status === 'Completed';
+    return true;
+  });
+
   const sendWhatsApp = () => {
-    const activeCrops = crops.map(c => `${c.name} (${c.status})`).join(', ') || 'None';
-    const pendingTasks = tasks.filter(t => t.status === 'Pending').map(t => t.title).join(', ') || 'None';
-    const msg = `🚜 *AgriFarm Report Summary*%0A%0A🌱 *Crops:* ${crops.length} total (${activeCrops})%0A📝 *Pending Tasks:* ${tasks.filter(t=>t.status==='Pending').length} (${pendingTasks})`;
+    const cropSummary = crops.map(c => `${c.name} (${c.status})`).join(', ') || 'None';
+    const pendingCount = tasks.filter(t => t.status === 'Pending').length;
+    const msg = `🚜 *AgriFarm Command Report*%0A%0A🌱 *Crops Register:* ${crops.length} total (${cropSummary})%0A💰 *Ledger:* Income $${totalIncome.toLocaleString()} | Expense $${totalExpense.toLocaleString()} (Net: $${netProfit.toLocaleString()})%0A📝 *Worker Roster:* ${pendingCount} pending task assignments.`;
     window.open(`https://wa.me/?text=${msg}`);
   };
 
-  // --- Auth View (Signup/Login) ---
+  // --- RENDER AUTHENTICATION ---
   if (!token) return (
-    <div style={{background: '#0d0d11', color: '#e4e4e7', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', fontFamily: 'sans-serif'}}>
+    <div className="min-h-screen bg-[#070b13] flex flex-col justify-center items-center px-4">
       {alertMsg.text && (
-        <div style={{
-          ...styles.alert, 
-          background: alertMsg.isError ? '#ef4444' : '#2d6a4f',
-          animation: 'fadeIn 0.3s ease-out'
-        }}>
-          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
+        <div className={`mb-6 p-4 rounded-xl shadow-lg border text-sm max-w-sm w-full animate-fade-in ${
+          alertMsg.isError ? 'bg-red-950/80 border-red-500 text-red-200' : 'bg-farm-950/80 border-farm-500 text-farm-200'
+        }`}>
+          <div className="flex items-center gap-3">
             {alertMsg.isError ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
             <span>{alertMsg.text}</span>
           </div>
         </div>
       )}
       
-      <form onSubmit={handleAuthSubmit} style={styles.authCard}>
-        <div style={{display: 'flex', justifyContent: 'center', marginBottom: '20px'}}>
-          <div style={{background: '#2d6a4f', padding: '15px', borderRadius: '50%', color: '#80ed99'}}>
-            <Sprout size={32} className="animate-bounce-soft" />
+      <div className="bg-[#0f172a] border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover">
+        <div className="flex justify-center mb-4">
+          <div className="bg-farm-900/40 p-4 rounded-full border border-farm-500/20 text-farm-400">
+            <Sprout size={36} className="animate-bounce-soft" />
           </div>
         </div>
-        <h2 style={{textAlign: 'center', color: '#80ed99', fontSize: '24px', margin: '0 0 8px 0'}}>
-          AgriFarm Manager
+        <h2 className="text-center text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+          AgriFarm Command Hub
         </h2>
-        <p style={{textAlign: 'center', color: '#888', fontSize: '14px', marginBottom: '25px'}}>
-          {isRegister ? "Register a new worker account" : "Sign in to manage farm operations"}
+        <p className="text-center text-slate-500 text-xs mb-8 uppercase tracking-widest font-semibold">
+          {isRegister ? "Register a new operative" : "Secure Sign-In Interface"}
         </p>
         
-        {isRegister && (
-          <div style={styles.inputWrapper}>
+        <form onSubmit={handleAuthSubmit} className="space-y-4">
+          {isRegister && (
+            <div>
+              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Username</label>
+              <input 
+                type="text"
+                className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                placeholder="e.g. musman" 
+                value={authForm.username}
+                onChange={e => setAuthForm({...authForm, username: e.target.value})} 
+              />
+            </div>
+          )}
+          
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Email Address</label>
             <input 
-              style={styles.input} 
-              placeholder="Username" 
-              value={authForm.username}
-              onChange={e => setAuthForm({...authForm, username: e.target.value})} 
+              type="email"
+              className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
+              placeholder="worker@farm.com" 
+              value={authForm.email}
+              onChange={e => setAuthForm({...authForm, email: e.target.value})} 
             />
           </div>
-        )}
-        
-        <input 
-          style={styles.input} 
-          type="email"
-          placeholder="Email Address" 
-          value={authForm.email}
-          onChange={e => setAuthForm({...authForm, email: e.target.value})} 
-        />
-        
-        <input 
-          style={styles.input} 
-          type="password" 
-          placeholder="Password" 
-          value={authForm.password}
-          onChange={e => setAuthForm({...authForm, password: e.target.value})} 
-        />
-        
-        <button style={styles.btnGreen} disabled={loading}>
-          {loading ? (
-            <span style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
-              <Loader size={18} className="animate-spin" /> Verifying...
-            </span>
-          ) : (
-            <span style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
-              {isRegister ? <UserPlus size={18} /> : <LogIn size={18} />}
-              {isRegister ? "Create Account" : "Access Dashboard"}
-            </span>
+          
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Access Password</label>
+            <input 
+              type="password" 
+              className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
+              placeholder="••••••••" 
+              value={authForm.password}
+              onChange={e => setAuthForm({...authForm, password: e.target.value})} 
+            />
+          </div>
+
+          {isRegister && (
+            <div>
+              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Access Level (Role)</label>
+              <select 
+                className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                value={authForm.role}
+                onChange={e => setAuthForm({...authForm, role: e.target.value})}
+              >
+                <option value="worker">Worker (Standard Access)</option>
+                <option value="admin">Administrator (Command Access)</option>
+              </select>
+            </div>
           )}
-        </button>
+          
+          <button 
+            type="submit" 
+            className="w-full py-3 bg-farm-600 hover:bg-farm-700 text-white font-bold rounded-lg transition-colors shadow-lg hover:shadow-farm-500/10 flex items-center justify-center gap-2"
+            disabled={loading}
+          >
+            {loading ? <Loader size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+            {isRegister ? "Initiate Operative" : "Access Console"}
+          </button>
+        </form>
         
-        <p style={{textAlign: 'center', fontSize: '14px', color: '#a8a8b3', marginTop: '20px', cursor: 'pointer', transition: 'color 0.2s'}} onClick={() => {
+        <p className="text-center text-xs text-slate-400 mt-6 cursor-pointer hover:text-slate-200 transition-colors uppercase font-bold tracking-wider" onClick={() => {
           setIsRegister(!isRegister);
-          setAuthForm({ username: '', email: '', password: '' });
+          setAuthForm({ username: '', email: '', password: '', role: 'worker' });
         }}>
-          {isRegister ? "Already registered? Sign In" : "New worker? Register an account"}
+          {isRegister ? "🔐 Existing Operative? Login" : "🌱 New Worker? Register"}
         </p>
-      </form>
+      </div>
     </div>
   );
 
-  // --- Main Dashboard View ---
+  // --- RENDER DASHBOARD ---
   return (
-    <div style={{fontFamily: 'sans-serif', background: '#0d0d11', color: '#e4e4e7', minHeight: '100vh'}}>
-      {/* Navbar */}
-      <nav style={styles.nav}>
-        <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-          <div style={{background: '#2d6a4f', padding: '8px', borderRadius: '10px', color: '#80ed99', display: 'flex'}}>
-            <Sprout size={24} />
+    <div className="min-h-screen bg-[#070b13] flex flex-col md:flex-row text-slate-100">
+      
+      {/* ─── SIDEBAR ─── */}
+      <aside className="w-full md:w-64 bg-[#0f172a] border-r border-slate-800 flex flex-col justify-between py-6 px-4 shrink-0 shadow-lg">
+        <div className="space-y-8">
+          {/* Logo Brand */}
+          <div className="flex items-center gap-3 px-2">
+            <div className="bg-farm-900/50 p-2 rounded-xl border border-farm-500/20 text-farm-400">
+              <Sprout size={24} />
+            </div>
+            <div>
+              <h1 className="text-lg font-extrabold text-white tracking-tight m-0 p-0 leading-tight">AgriFarm</h1>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none">Command</p>
+            </div>
           </div>
-          <h2 style={{color: '#80ed99', margin: 0, fontSize: '20px', fontWeight: 'bold'}}>AgriFarm</h2>
-        </div>
-        <div style={{display: 'flex', gap: '5px', alignItems: 'center'}}>
-            <button style={{...styles.navBtn, color: view === 'crops' ? '#80ed99' : 'white', background: view === 'crops' ? '#1b4332' : 'none'}} onClick={() => setView('crops')}>
-              <Sprout size={16} /> Crops
-            </button>
-            <button style={{...styles.navBtn, color: view === 'finance' ? '#80ed99' : 'white', background: view === 'finance' ? '#1b4332' : 'none'}} onClick={() => setView('finance')}>
-              <DollarSign size={16} /> Finance
-            </button>
-            <button style={{...styles.navBtn, color: view === 'tasks' ? '#80ed99' : 'white', background: view === 'tasks' ? '#1b4332' : 'none'}} onClick={() => setView('tasks')}>
-              <CheckSquare size={16} /> Tasks
-            </button>
-            <button style={styles.navBtnLogout} onClick={handleLogout}>
-              <LogOut size={16} /> Logout
-            </button>
-        </div>
-      </nav>
 
-      {/* Floating Notifications */}
-      {alertMsg.text && (
-        <div style={{
-          ...styles.floatingAlert, 
-          background: alertMsg.isError ? '#ef4444' : '#2d6a4f',
-        }}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-            {alertMsg.isError ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
-            <span>{alertMsg.text}</span>
+          {/* Navigation Links */}
+          <nav className="space-y-1.5">
+            <button 
+              onClick={() => setView('dashboard')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                view === 'dashboard' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <LayoutDashboard size={18} /> Dashboard
+            </button>
+            <button 
+              onClick={() => setView('crops')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                view === 'crops' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <Sprout size={18} /> Crops Register
+            </button>
+            <button 
+              onClick={() => setView('finance')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                view === 'finance' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <DollarSign size={18} /> Finance Ledger
+            </button>
+            <button 
+              onClick={() => setView('tasks')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                view === 'tasks' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <CheckSquare size={18} /> Worker Roster
+            </button>
+            <button 
+              onClick={() => setView('settings')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                view === 'settings' ? 'bg-farm-900/40 text-farm-300 border-l-4 border-farm-500' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <Settings size={18} /> Settings & Admin
+            </button>
+          </nav>
+        </div>
+
+        {/* User Badge & Logout */}
+        <div className="border-t border-slate-800 pt-4 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold text-slate-500 capitalize">{userRole} Terminal</p>
+              <p className="text-sm font-bold text-slate-200 truncate max-w-[130px]">{username}</p>
+            </div>
+            <div className="bg-slate-800 p-2 rounded-lg text-farm-400 border border-slate-700">
+              <ShieldCheck size={16} />
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="w-full py-2.5 bg-red-950/20 hover:bg-red-900/30 text-red-400 border border-red-900/40 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all"
+          >
+            <LogOut size={16} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* ─── MAIN CONTENT PANEL ─── */}
+      <main className="flex-1 min-w-0 flex flex-col">
+        
+        {/* Top Header */}
+        <header className="bg-[#0f172a]/40 border-b border-slate-800 py-4 px-6 md:px-8 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold text-slate-100 capitalize">{view} Command</h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={sendWhatsApp} className="hidden sm:flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold px-4 py-2 rounded-lg transition-transform hover:scale-105">
+              <Send size={14} /> Send WhatsApp Report
+            </button>
+          </div>
+        </header>
+
+        {/* Floating alerts */}
+        {alertMsg.text && (
+          <div className={`fixed top-6 right-6 z-50 p-4 rounded-xl shadow-2xl border text-sm max-w-sm animate-fade-in-up ${
+            alertMsg.isError ? 'bg-red-950 border-red-500 text-red-200' : 'bg-farm-950 border-farm-500 text-farm-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              {alertMsg.isError ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
+              <span>{alertMsg.text}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Content Views */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+          
+          {/* ───────────────── VIEW: DASHBOARD ───────────────── */}
+          {view === 'dashboard' && (
+            <div className="space-y-8 animate-fade-in">
+              <div className="bg-gradient-to-r from-farm-900/30 via-slate-900 to-slate-900 border border-farm-500/20 p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="text-2xl font-black text-white leading-tight">Welcome to Operative Command, {username}!</h2>
+                  <p className="text-slate-400 text-sm mt-1">Real-time agricultural telemetry, crop cycles, and duty rosters are fully initialized.</p>
+                </div>
+                <span className="bg-farm-900/40 text-farm-300 border border-farm-500/20 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <ShieldCheck size={14} /> Systems Operational
+                </span>
+              </div>
+
+              {/* Status Grid Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm">
+                  <div>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Crops Planted</p>
+                    <p className="text-3xl font-extrabold text-white mt-1">{crops.length}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{crops.filter(c => c.status === 'Growing').length} Currently Growing</p>
+                  </div>
+                  <div className="bg-farm-950 text-farm-400 p-3 rounded-xl border border-farm-900">
+                    <Sprout size={24} />
+                  </div>
+                </div>
+
+                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm">
+                  <div>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Operational Profit</p>
+                    <p className={`text-3xl font-extrabold mt-1 ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
+                      ${netProfit.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-1">Income vs Expense ledger</p>
+                  </div>
+                  <div className={`p-3 rounded-xl border ${netProfit >= 0 ? 'bg-farm-950 text-farm-400 border-farm-900' : 'bg-red-950/40 text-red-400 border-red-900/40'}`}>
+                    {netProfit >= 0 ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
+                  </div>
+                </div>
+
+                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm">
+                  <div>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Pending Duties</p>
+                    <p className="text-3xl font-extrabold text-white mt-1">{tasks.filter(t => t.status === 'Pending').length}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{tasks.filter(t => t.status === 'Completed').length} Completed tasks</p>
+                  </div>
+                  <div className="bg-indigo-950 text-indigo-400 p-3 rounded-xl border border-indigo-900/50">
+                    <CheckSquare size={24} />
+                  </div>
+                </div>
+
+                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-sm">
+                  <div>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Farm Workers</p>
+                    <p className="text-3xl font-extrabold text-white mt-1">{users.length || 1}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Authorized farm operatives</p>
+                  </div>
+                  <div className="bg-teal-950 text-teal-400 p-3 rounded-xl border border-teal-900/50">
+                    <Users size={24} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-panels for Quick Actions & Overview */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Active crops preview card */}
+                <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl shadow-md">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
+                    <h4 className="font-bold text-white flex items-center gap-2"><Sprout size={18} className="text-farm-400" /> Active Sectors</h4>
+                    <button onClick={() => setView('crops')} className="text-xs text-farm-400 hover:text-farm-300 font-bold uppercase tracking-wider">View All</button>
+                  </div>
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {crops.length === 0 ? (
+                      <p className="text-slate-500 text-sm text-center py-8">No active crops logged.</p>
+                    ) : crops.slice(0, 4).map(c => (
+                      <div key={c._id} className="flex justify-between items-center p-3 rounded-xl bg-slate-900/40 border border-slate-800">
+                        <div>
+                          <p className="text-sm font-bold text-white">{c.name}</p>
+                          <p className="text-xs text-slate-500">Field: {c.field || 'N/A'}</p>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                          c.status === 'Growing' ? 'bg-farm-900/40 text-farm-300 border border-farm-500/20' : 'bg-[#1e1e2d] text-indigo-400 border border-indigo-900/50'
+                        }`}>{c.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Duty board preview card */}
+                <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl shadow-md">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
+                    <h4 className="font-bold text-white flex items-center gap-2"><CheckSquare size={18} className="text-farm-400" /> Duty Roster Summary</h4>
+                    <button onClick={() => setView('tasks')} className="text-xs text-farm-400 hover:text-farm-300 font-bold uppercase tracking-wider">Open Board</button>
+                  </div>
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {tasks.length === 0 ? (
+                      <p className="text-slate-500 text-sm text-center py-8">Duty roster is currently empty.</p>
+                    ) : tasks.filter(t => t.status !== 'Completed').slice(0, 4).map(t => (
+                      <div key={t._id} className="flex justify-between items-center p-3 rounded-xl bg-slate-900/40 border border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <Circle size={16} className="text-slate-600 shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-white">{t.title}</p>
+                            <p className="text-xs text-slate-500">Assignee: {t.assigned_to || 'General'}</p>
+                          </div>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                          t.priority === 'High' ? 'bg-red-950/40 text-red-400 border border-red-900/20' : 'bg-slate-800 text-slate-400'
+                        }`}>{t.priority}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ───────────────── VIEW: CROPS REGISTER ───────────────── */}
+          {view === 'crops' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
+                <div>
+                  <h3 className="text-lg font-extrabold text-white">Sectors & Crop Inventory</h3>
+                  <p className="text-slate-500 text-xs">Register, track development phases, variety classifications, and harvest yields.</p>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <select 
+                    className="bg-[#0f172a] border border-slate-800 text-slate-300 rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500"
+                    value={cropFilter}
+                    onChange={e => setCropFilter(e.target.value)}
+                  >
+                    <option value="all">All Phases</option>
+                    <option value="Planted">Planted</option>
+                    <option value="Growing">Growing</option>
+                    <option value="Harvesting">Harvesting</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                  <button 
+                    onClick={() => { setEditingCrop(null); setCropForm({ name: '', variety: '', status: 'Growing', plant_date: '', harvest_date: '', field: '', yield_kg: '', notes: '' }); setShowCropModal(true); }}
+                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto"
+                  >
+                    <Plus size={16} /> Log New Crop
+                  </button>
+                </div>
+              </div>
+
+              {/* Crops Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {crops.length === 0 ? (
+                  <div className="col-span-full bg-[#0f172a] border border-slate-800 py-12 rounded-2xl text-center text-slate-500">
+                    No crops logged. Get started by planting your first crop.
+                  </div>
+                ) : filteredCrops.length === 0 ? (
+                  <div className="col-span-full bg-[#0f172a] border border-slate-800 py-12 rounded-2xl text-center text-slate-500">
+                    No crops matching this phase filter were found.
+                  </div>
+                ) : filteredCrops.map((c, idx) => (
+                  <div key={c._id} className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-md hover:border-slate-700 transition-all flex flex-col justify-between animate-fade-in" style={{animationDelay: `${idx * 0.05}s`}}>
+                    <div className="space-y-4">
+                      {/* Name & Badge */}
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <h4 className="font-extrabold text-white text-lg tracking-tight">{c.name}</h4>
+                          <p className="text-xs text-slate-500 font-medium">Variety: {c.variety || 'Standard'}</p>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                          c.status === 'Growing' ? 'bg-farm-900/40 text-farm-300 border border-farm-500/20' :
+                          c.status === 'Harvesting' ? 'bg-amber-950/40 text-amber-400 border border-amber-900/20' :
+                          c.status === 'Completed' ? 'bg-purple-950/40 text-purple-400 border border-purple-900/20' :
+                          'bg-slate-800 text-slate-400'
+                        }`}>{c.status}</span>
+                      </div>
+
+                      {/* Info grid */}
+                      <div className="grid grid-cols-2 gap-3 text-xs border-y border-slate-800 py-3">
+                        <div className="space-y-1">
+                          <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><MapPin size={10} /> Field/Area</p>
+                          <p className="text-slate-300 font-semibold">{c.field || 'Farm-wide'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><Scale size={10} /> Harvested Yield</p>
+                          <p className="text-slate-300 font-semibold">{c.yield_kg ? `${c.yield_kg.toLocaleString()} kg` : '-'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><Calendar size={10} /> Planted</p>
+                          <p className="text-slate-300 font-semibold">{c.plant_date || '-'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-slate-500 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1"><Calendar size={10} /> Harvest Target</p>
+                          <p className="text-slate-300 font-semibold">{c.harvest_date || '-'}</p>
+                        </div>
+                      </div>
+
+                      {c.notes && (
+                        <p className="text-xs text-slate-400 line-clamp-2 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800">
+                          {c.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex justify-end gap-1.5 mt-5 pt-3 border-t border-slate-800">
+                      <button onClick={() => handleEditCrop(c)} className="p-1.5 text-slate-400 hover:text-farm-400 hover:bg-slate-800 rounded-lg transition-colors">
+                        <Edit3 size={15} />
+                      </button>
+                      <button onClick={() => handleDeleteCrop(c._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ───────────────── VIEW: FINANCIAL LEDGER ───────────────── */}
+          {view === 'finance' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
+                <div>
+                  <h3 className="text-lg font-extrabold text-white">Financial Ledger</h3>
+                  <p className="text-slate-500 text-xs">Complete bookkeeping for agricultural inputs, crop sales, operational expenses, and profitability analyses.</p>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <select 
+                    className="bg-[#0f172a] border border-slate-800 text-slate-300 rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500"
+                    value={financeFilter}
+                    onChange={e => setFinanceFilter(e.target.value)}
+                  >
+                    <option value="all">All Logs</option>
+                    <option value="income">Income Only</option>
+                    <option value="expense">Expense Only</option>
+                  </select>
+                  <button 
+                    onClick={() => { setEditingFinance(null); setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' }); setShowFinanceModal(true); }}
+                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto"
+                  >
+                    <Plus size={16} /> Log Entry
+                  </button>
+                </div>
+              </div>
+
+              {/* Financial Breakdown Panel */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-sm">
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Total Gross Income</p>
+                  <h4 className="text-2xl font-black text-farm-400 mt-1">${totalIncome.toLocaleString()}</h4>
+                </div>
+                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-sm">
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Total Operational Expenditures</p>
+                  <h4 className="text-2xl font-black text-red-400 mt-1">${totalExpense.toLocaleString()}</h4>
+                </div>
+                <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-sm">
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Net Operations Margin</p>
+                  <h4 className={`text-2xl font-black mt-1 ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
+                    ${netProfit.toLocaleString()}
+                  </h4>
+                </div>
+              </div>
+
+              {/* Finance list table */}
+              <div className="bg-[#0f172a] border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-[#121b2d] text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-800">
+                      <tr>
+                        <th className="px-6 py-4">Date</th>
+                        <th className="px-6 py-4">Description</th>
+                        <th className="px-6 py-4">Sector/Crop Link</th>
+                        <th className="px-6 py-4 text-right">Ledger Flow</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-sm">
+                      {finance.length === 0 ? (
+                        <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">Financial ledger contains no logs.</td></tr>
+                      ) : filteredFinance.length === 0 ? (
+                        <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">No logs found matching this ledger flow filter.</td></tr>
+                      ) : filteredFinance.map(f => {
+                        const linkedCrop = crops.find(c => c._id === f.crop_id);
+                        return (
+                        <tr key={f._id} className="hover:bg-slate-900/30 transition-colors">
+                          <td className="px-6 py-4 text-slate-400 whitespace-nowrap">{f.date}</td>
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-white">{f.category}</div>
+                            {f.notes && <div className="text-xs text-slate-500 max-w-xs truncate">{f.notes}</div>}
+                          </td>
+                          <td className="px-6 py-4">
+                            {linkedCrop ? (
+                              <span className="inline-flex items-center gap-1.5 bg-farm-950 text-farm-300 border border-farm-900 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                <Sprout size={10} /> {linkedCrop.name}
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 text-xs">Farm-wide</span>
+                            )}
+                          </td>
+                          <td className={`px-6 py-4 text-right font-extrabold whitespace-nowrap ${f.type === 'expense' ? 'text-red-400' : 'text-farm-400'}`}>
+                            <div className="inline-flex items-center gap-1">
+                              {f.type === 'expense' ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
+                              ${f.amount.toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right whitespace-nowrap">
+                            <div className="inline-flex gap-1">
+                              <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-400 hover:text-farm-400 hover:bg-slate-800 rounded-lg">
+                                <Edit3 size={15} />
+                              </button>
+                              <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg">
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ───────────────── VIEW: WORKER ROSTER & TASKS ───────────────── */}
+          {view === 'tasks' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
+                <div>
+                  <h3 className="text-lg font-extrabold text-white">Worker Tasks & Assignments</h3>
+                  <p className="text-slate-500 text-xs">Assign agricultural maintenance schedules, harvest operations, and system updates to operatives.</p>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <select 
+                    className="bg-[#0f172a] border border-slate-800 text-slate-300 rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500"
+                    value={taskFilter}
+                    onChange={e => setTaskFilter(e.target.value)}
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                  <button 
+                    onClick={() => { setEditingTask(null); setTaskForm({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' }); setShowTaskModal(true); }}
+                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-transform hover:scale-105 ml-auto"
+                  >
+                    <Plus size={16} /> Assign Task
+                  </button>
+                </div>
+              </div>
+
+              {/* Tasks Roster Board */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {tasks.length === 0 ? (
+                  <div className="col-span-full bg-[#0f172a] border border-slate-800 py-12 rounded-2xl text-center text-slate-500">
+                    Duty roster is clean. Assign tasks to workers to distribute schedules.
+                  </div>
+                ) : filteredTasks.length === 0 ? (
+                  <div className="col-span-full bg-[#0f172a] border border-slate-800 py-12 rounded-2xl text-center text-slate-500">
+                    No assignments found matching this status filter.
+                  </div>
+                ) : filteredTasks.map((t, idx) => (
+                  <div key={t._id} className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-md flex flex-col justify-between" style={{
+                    borderLeft: `4px solid ${t.status === 'Completed' ? '#444' : t.priority === 'High' ? '#ef4444' : '#22c55e'}`,
+                    opacity: t.status === 'Completed' ? 0.6 : 1,
+                    animation: 'fadeIn 0.3s ease-out',
+                    animationDelay: `${idx * 0.05}s`
+                  }}>
+                    <div className="space-y-4">
+                      {/* Priority Tag & Completion Checkbox */}
+                      <div className="flex justify-between items-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                          t.priority === 'High' ? 'bg-red-950/40 text-red-400 border border-red-900/20' :
+                          t.priority === 'Low' ? 'bg-slate-800 text-slate-400' :
+                          'bg-farm-950 text-farm-300 border border-farm-900'
+                        }`}>{t.priority} Priority</span>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                            t.status === 'Completed' ? 'bg-slate-800 text-slate-500' : 'bg-farm-950 text-farm-400'
+                          }`}>{t.status}</span>
+                        </div>
+                      </div>
+
+                      {/* Main Title */}
+                      <div>
+                        <h4 className={`text-base font-extrabold text-white leading-tight ${t.status === 'Completed' ? 'line-through text-slate-500' : ''}`}>{t.title}</h4>
+                        {t.notes && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{t.notes}</p>}
+                      </div>
+
+                      {/* Info lines */}
+                      <div className="border-t border-slate-800/60 pt-3 space-y-1.5 text-xs text-slate-400">
+                        <p className="flex items-center gap-2"><Users size={12} className="text-slate-500" /> Operative: <span className="text-slate-200 font-semibold">{t.assigned_to || 'Unassigned / General'}</span></p>
+                        <p className="flex items-center gap-2"><Calendar size={12} className="text-slate-500" /> Due Date: <span className="text-slate-200 font-semibold">{t.due_date || 'None / Ongoing'}</span></p>
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex justify-between items-center mt-5 pt-3 border-t border-slate-800/60">
+                      {t.status === 'Pending' ? (
+                        <button 
+                          onClick={() => handleCompleteTask(t._id)}
+                          className="text-xs text-farm-400 hover:text-farm-300 font-bold flex items-center gap-1.5 transition-colors"
+                        >
+                          <CheckCircle size={14} /> Complete Task
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle size={12} /> Work Completed</span>
+                      )}
+                      
+                      <div className="flex gap-1">
+                        <button onClick={() => handleEditTask(t)} className="p-1.5 text-slate-400 hover:text-farm-400 hover:bg-slate-800 rounded-lg transition-colors">
+                          <Edit3 size={14} />
+                        </button>
+                        <button onClick={() => handleDeleteTask(t._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ───────────────── VIEW: SETTINGS & ADMIN ───────────────── */}
+          {view === 'settings' && (
+            <div className="space-y-8 animate-fade-in">
+              <div className="border-b border-slate-800 pb-5">
+                <h3 className="text-lg font-extrabold text-white">Settings & Administration Portal</h3>
+                <p className="text-slate-500 text-xs">Configure access security, backup operations, and administrative privileges.</p>
+              </div>
+
+              {/* Worker Accounts Management Panel (Admin Only) */}
+              {userRole === 'admin' ? (
+                <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-md space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                    <Users className="text-farm-400" />
+                    <div>
+                      <h4 className="font-extrabold text-white text-base">Worker Account Management (Admin Privileged)</h4>
+                      <p className="text-xs text-slate-500">Create new worker accounts, configure roles, and terminate operative access.</p>
+                    </div>
+                  </div>
+
+                  {/* Creation Form */}
+                  <form onSubmit={handleAddWorker} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end bg-[#151d30]/40 p-4 rounded-xl border border-slate-800">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Username</label>
+                      <input 
+                        className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                        placeholder="e.g. johan"
+                        value={newWorkerForm.username}
+                        onChange={e => setNewWorkerForm({...newWorkerForm, username: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Email</label>
+                      <input 
+                        type="email"
+                        className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                        placeholder="johan@farm.com"
+                        value={newWorkerForm.email}
+                        onChange={e => setNewWorkerForm({...newWorkerForm, email: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Password</label>
+                      <input 
+                        type="password"
+                        className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                        placeholder="Secret word"
+                        value={newWorkerForm.password}
+                        onChange={e => setNewWorkerForm({...newWorkerForm, password: e.target.value})}
+                      />
+                    </div>
+                    <button className="py-2 px-4 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all">
+                      <UserPlus size={14} /> Add Worker
+                    </button>
+                  </form>
+
+                  {/* Worker Accounts Listing */}
+                  <div className="space-y-3">
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Registered Operatives ({users.length})</p>
+                    <div className="divide-y divide-slate-800 border border-slate-800 rounded-xl overflow-hidden bg-[#151d30]/20">
+                      {users.map(u => (
+                        <div key={u._id} className="flex justify-between items-center p-4">
+                          <div>
+                            <p className="text-sm font-bold text-white">{u.username} <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 ml-2">{u.role}</span></p>
+                            <p className="text-xs text-slate-500">{u.email}</p>
+                          </div>
+                          {u.username !== 'admin' && (
+                            <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg">
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-md text-slate-500 flex items-center gap-3">
+                  <ShieldCheck size={20} />
+                  <p className="text-xs font-medium">Worker account access level detected. Worker management panel is restricted to Administrators.</p>
+                </div>
+              )}
+
+              {/* Database Backup & Restore Center (Admin Only) */}
+              {userRole === 'admin' ? (
+                <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-md space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                    <Database className="text-farm-400" />
+                    <div>
+                      <h4 className="font-extrabold text-white text-base">Database Backup & Recovery Control (Admin Privileged)</h4>
+                      <p className="text-xs text-slate-500">Atomic full-database backup exports and backup recovery restoration.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Export */}
+                    <div className="p-5 rounded-xl border border-slate-800 bg-[#151d30]/30 space-y-3">
+                      <h5 className="text-sm font-bold text-slate-200">Database Backup Export</h5>
+                      <p className="text-xs text-slate-500 leading-relaxed">Download a single-file atomic JSON backup containing all crops, financial logs, duties rosters, and worker lists.</p>
+                      <button onClick={handleExportBackup} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all">
+                        <Database size={14} /> Download JSON Backup
+                      </button>
+                    </div>
+
+                    {/* Import/Restore */}
+                    <div className="p-5 rounded-xl border border-slate-800 bg-[#151d30]/30 space-y-3">
+                      <h5 className="text-sm font-bold text-slate-200">Database Recovery Restore</h5>
+                      <p className="text-xs text-slate-500 leading-relaxed">Restore all databases atomically from a previously downloaded AgriFarm backup file. Warning: This clears all existing tables.</p>
+                      <label className="inline-flex items-center gap-2 px-4 py-2 bg-farm-900/30 hover:bg-farm-900/50 text-farm-300 border border-farm-800 hover:border-farm-700 text-xs font-bold rounded-lg cursor-pointer transition-all">
+                        <Database size={14} /> Upload & Restore Database
+                        <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6 shadow-md text-slate-500 flex items-center gap-3">
+                  <ShieldCheck size={20} />
+                  <p className="text-xs font-medium">Worker account access level detected. Database backup and restore center is restricted to Administrators.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      </main>
+
+      {/* ───────────────── MODALS ───────────────── */}
+
+      {/* CROP FORM MODAL */}
+      {showCropModal && (
+        <div className="fixed inset-0 z-50 bg-[#000]/70 flex justify-center items-center p-4 backdrop-blur-xs">
+          <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative animate-fade-in-up">
+            <button onClick={() => setShowCropModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"><X size={20} /></button>
+            <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2"><Sprout className="text-farm-400" /> {editingCrop ? "Modify Crop Cycle" : "Log New Crop cycle"}</h3>
+            
+            <form onSubmit={handleCropSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Crop Name *</label>
+                  <input required className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.name} onChange={e => setCropForm({...cropForm, name: e.target.value})} placeholder="e.g. Premium Rice" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Variety / Classification</label>
+                  <input className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.variety} onChange={e => setCropForm({...cropForm, variety: e.target.value})} placeholder="e.g. Basmati 370" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Field / Plot Sector</label>
+                  <input className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.field} onChange={e => setCropForm({...cropForm, field: e.target.value})} placeholder="e.g. Sector 3A" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Estimated Yield (kg)</label>
+                  <input type="number" step="0.1" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.yield_kg} onChange={e => setCropForm({...cropForm, yield_kg: e.target.value})} placeholder="0.0" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Planted Date</label>
+                  <input type="date" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.plant_date} onChange={e => setCropForm({...cropForm, plant_date: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Harvest Date Target</label>
+                  <input type="date" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.harvest_date} onChange={e => setCropForm({...cropForm, harvest_date: e.target.value})} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Current Cycle Status</label>
+                <select 
+                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                  value={cropForm.status}
+                  onChange={e => setCropForm({...cropForm, status: e.target.value})}
+                >
+                  <option value="Planted">Planted</option>
+                  <option value="Growing">Growing</option>
+                  <option value="Harvesting">Harvesting</option>
+                  <option value="Completed">Completed (Inactive)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Notes / Soil Details</label>
+                <textarea rows="2" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.notes} onChange={e => setCropForm({...cropForm, notes: e.target.value})} placeholder="Soil pH is 6.5, added organic fertilizer..." />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+                <button type="button" onClick={() => setShowCropModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md">
+                  <CheckCircle size={14} /> {editingCrop ? "Update Crop" : "Plant Crop"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Primary Dashboard Container */}
-      <div style={{padding: '40px 20px', maxWidth: '850px', margin: '0 auto'}} className="animate-fade-in-up">
-        
-        {/* --- CROPS SECTION --- */}
-        {view === 'crops' && (
-          <div>
-            <div style={{display: 'flex', justifyContent: 'between', alignItems: 'center', borderBottom: '2px solid #222', paddingBottom: '15px', marginBottom: '25px'}}>
-              <h3 style={{margin: 0, color: '#80ed99', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                <Sprout /> Crop Tracking Center
-              </h3>
-              <span style={styles.badge}>{crops.length} Crops Listed</span>
-            </div>
-
-            <form onSubmit={handleAddCrop} style={styles.formContainer}>
-              <input 
-                style={styles.inputInline} 
-                placeholder="Enter crop name (e.g. Premium Basmati Rice)" 
-                value={cropName} 
-                onChange={e => setCropName(e.target.value)} 
-              />
-              <button style={styles.btnGreenSmall} type="submit">
-                <Plus size={18} /> Add Crop
-              </button>
-            </form>
-
-            <div style={{marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                {loading ? (
-                  <p style={styles.emptyText}><Loader className="animate-spin" /> Fetching farm inventory...</p>
-                ) : crops.length === 0 ? (
-                  <p style={styles.emptyText}>No crops registered in this sector. Add one to get started.</p>
-                ) : (
-                  crops.map((c, idx) => (
-                    <div key={c._id} style={styles.card} className="animate-fade-in" style={{animationDelay: `${idx * 0.05}s`}}>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px'}}>
-                        <div>
-                          <p style={{margin: 0, fontSize: '16px', fontWeight: 'bold', color: 'white'}}>{c.name}</p>
-                          <p style={{margin: '4px 0 0 0', fontSize: '12px', color: '#888', display: 'flex', alignItems: 'center', gap: '5px'}}>
-                            <Calendar size={12} /> Status: <span style={{color: c.status === 'Growing' ? '#80ed99' : c.status === 'Harvesting' ? '#ffd166' : '#a855f7'}}>{c.status}</span>
-                          </p>
-                        </div>
-                        <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-                          {/* Quick Status Modifiers */}
-                          <select 
-                            style={styles.cardSelect} 
-                            value={c.status} 
-                            onChange={(e) => handleUpdateCropStatus(c._id, e.target.value)}
-                            disabled={actionId === c._id}
-                          >
-                            <option value="Growing">Growing</option>
-                            <option value="Harvesting">Harvesting</option>
-                            <option value="Completed">Completed</option>
-                          </select>
-                          
-                          <button 
-                            style={styles.btnDanger} 
-                            onClick={() => handleDeleteCrop(c._id)}
-                            disabled={actionId === c._id}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-            </div>
-          </div>
-        )}
-
-        {/* --- FINANCE SECTION --- */}
-        {view === 'finance' && (
-          <div>
-            <div style={{display: 'flex', justifyContent: 'between', alignItems: 'center', borderBottom: '2px solid #222', paddingBottom: '15px', marginBottom: '25px'}}>
-              <h3 style={{margin: 0, color: '#80ed99', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                <DollarSign /> Ledger & Invoices
-              </h3>
-              <span style={styles.badge}>{finance.length} Transactions</span>
-            </div>
-
-            {/* Quick Stat Summary cards */}
-            <div style={styles.financeSummaryRow}>
-              <div style={styles.financeSummaryCard}>
-                <p style={{margin: 0, fontSize: '12px', color: '#888'}}>TOTAL INCOME</p>
-                <h4 style={{margin: '5px 0 0 0', color: '#80ed99', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '5px'}}>
-                  <TrendingUp size={20} />
-                  ${finance.filter(f => f.type === 'income').reduce((a, b) => a + b.amount, 0).toLocaleString()}
-                </h4>
-              </div>
-              <div style={styles.financeSummaryCard}>
-                <p style={{margin: 0, fontSize: '12px', color: '#888'}}>TOTAL OUTFLOW</p>
-                <h4 style={{margin: '5px 0 0 0', color: '#ffadad', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '5px'}}>
-                  <TrendingDown size={20} />
-                  ${finance.filter(f => f.type === 'expense').reduce((a, b) => a + b.amount, 0).toLocaleString()}
-                </h4>
-              </div>
-            </div>
-
-            <form onSubmit={handleAddFinance} style={styles.formContainer}>
-              <input 
-                style={styles.inputInline} 
-                placeholder="Item / Category Description" 
-                value={finForm.cat} 
-                onChange={e => setFinForm({...finForm, cat: e.target.value})} 
-              />
-              <input 
-                style={{...styles.inputInline, maxWidth: '120px'}} 
-                type="number" 
-                placeholder="Amount ($)" 
-                value={finForm.amt} 
-                onChange={e => setFinForm({...finForm, amt: e.target.value})} 
-              />
-              <select 
-                style={styles.selectInline} 
-                value={finForm.type} 
-                onChange={e => setFinForm({...finForm, type: e.target.value})}
-              >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-              </select>
-              <button style={styles.btnGreenSmall} type="submit">
-                <Plus size={18} /> Save Log
-              </button>
-            </form>
-
-            <div style={{marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                {loading ? (
-                  <p style={styles.emptyText}><Loader className="animate-spin" /> Recalculating ledger...</p>
-                ) : finance.length === 0 ? (
-                  <p style={styles.emptyText}>No financial logs saved for this crop cycle.</p>
-                ) : (
-                  finance.map((f, idx) => (
-                      <div key={f._id} style={styles.card} className="animate-fade-in" style={{animationDelay: `${idx * 0.05}s`}}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                          <div>
-                            <p style={{margin: 0, fontSize: '15px', fontWeight: 'bold'}}>{f.category}</p>
-                            <p style={{margin: '4px 0 0 0', fontSize: '12px', color: '#666', display: 'flex', alignItems: 'center', gap: '5px'}}>
-                              <Calendar size={12} /> Logged: {f.date}
-                            </p>
-                          </div>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-                            <span style={{
-                              color: f.type === 'expense' ? '#ffadad' : '#80ed99', 
-                              fontSize: '16px', 
-                              fontWeight: 'bold',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
-                              {f.type === 'expense' ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
-                              {f.type === 'expense' ? '-' : '+'}${f.amount.toLocaleString()}
-                            </span>
-                            
-                            <button 
-                              style={styles.btnDanger} 
-                              onClick={() => handleDeleteFinance(f._id)}
-                              disabled={actionId === f._id}
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                  ))
-                )}
-            </div>
-          </div>
-        )}
-
-        {/* --- TASKS SECTION --- */}
-        {view === 'tasks' && (
-          <div>
-            <div style={{display: 'flex', justifyContent: 'between', alignItems: 'center', borderBottom: '2px solid #222', paddingBottom: '15px', marginBottom: '25px'}}>
-              <h3 style={{margin: 0, color: '#80ed99', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                <CheckSquare /> Farm Duty Roster
-              </h3>
-              <span style={styles.badge}>{tasks.filter(t => t.status === 'Pending').length} Pending Tasks</span>
-            </div>
-
-            <form onSubmit={handleAddTask} style={styles.formContainer}>
-              <input 
-                style={styles.inputInline} 
-                placeholder="Enter new farm assignment (e.g. Harvest Sector 3 Wheat)..." 
-                value={taskName} 
-                onChange={e => setTaskName(e.target.value)} 
-              />
-              <button style={styles.btnGreenSmall} type="submit">
-                <Plus size={18} /> Assign Task
-              </button>
-            </form>
-
-            <div style={{marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                {loading ? (
-                  <p style={styles.emptyText}><Loader className="animate-spin" /> Reading assignments...</p>
-                ) : tasks.length === 0 ? (
-                  <p style={styles.emptyText}>Roster is currently empty. No worker duties recorded.</p>
-                ) : (
-                  tasks.map((t, idx) => (
-                      <div key={t._id} style={{
-                        ...styles.card,
-                        borderLeftColor: t.status === 'Completed' ? '#444' : '#2d6a4f',
-                        opacity: t.status === 'Completed' ? 0.6 : 1
-                      }} className="animate-fade-in" style={{animationDelay: `${idx * 0.05}s`}}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                            {t.status === 'Completed' ? (
-                              <CheckCircle size={18} style={{color: '#80ed99'}} />
-                            ) : (
-                              <Circle size={18} style={{color: '#888'}} />
-                            )}
-                            <div>
-                              <p style={{
-                                margin: 0, 
-                                fontSize: '15px', 
-                                textDecoration: t.status === 'Completed' ? 'line-through' : 'none', 
-                                color: t.status === 'Completed' ? '#888' : 'white'
-                              }}>{t.title}</p>
-                              <span style={{
-                                color: t.status === 'Completed' ? '#888' : '#e0aaff', 
-                                fontSize: '12px',
-                                display: 'block',
-                                marginTop: '2px'
-                              }}>
-                                Status: {t.status}
-                              </span>
-                            </div>
-                          </div>
-                          <div style={{display: 'flex', gap: '8px'}}>
-                            {t.status === 'Pending' && (
-                              <button style={styles.btnDone} onClick={() => handleCompleteTask(t._id)} disabled={actionId === t._id}>
-                                <CheckCircle size={14} /> Done
-                              </button>
-                            )}
-                            <button 
-                              style={styles.btnDanger} 
-                              onClick={() => handleDeleteTask(t._id)}
-                              disabled={actionId === t._id}
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                  ))
-                )}
-            </div>
+      {/* FINANCE FORM MODAL */}
+      {showFinanceModal && (
+        <div className="fixed inset-0 z-50 bg-[#000]/70 flex justify-center items-center p-4 backdrop-blur-xs">
+          <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative animate-fade-in-up">
+            <button onClick={() => setShowFinanceModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"><X size={20} /></button>
+            <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2"><DollarSign className="text-farm-400" /> {editingFinance ? "Modify Transaction" : "Record Book Log"}</h3>
             
-            <button onClick={sendWhatsApp} style={styles.btnWA}>
-              <Send size={18} /> Send Roster Summary on WhatsApp
-            </button>
+            <form onSubmit={handleAddFinance} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Ledger Flow *</label>
+                  <select 
+                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                    value={finForm.type}
+                    onChange={e => setFinForm({...finForm, type: e.target.value})}
+                  >
+                    <option value="expense">Expenditure / Outflow (-)</option>
+                    <option value="income">Revenue / Inflow (+)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Amount ($) *</label>
+                  <input required type="number" step="0.01" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={finForm.amount} onChange={e => setFinForm({...finForm, amount: e.target.value})} placeholder="0.00" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Item Description / Category *</label>
+                <input required className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={finForm.category} onChange={e => setFinForm({...finForm, category: e.target.value})} placeholder="e.g. High-efficiency Sprinkler Purchase" />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Associate with Crop Sector</label>
+                <select 
+                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                  value={finForm.crop_id}
+                  onChange={e => setFinForm({...finForm, crop_id: e.target.value})}
+                >
+                  <option value="farm-wide">General / Farm-Wide Operational</option>
+                  {crops.map(c => (
+                    <option key={c._id} value={c._id}>Crop: {c.name} ({c.status})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Ledger Notes</label>
+                <textarea rows="2" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={finForm.notes} onChange={e => setFinForm({...finForm, notes: e.target.value})} placeholder="Purchase verified by musman, receipt attached..." />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+                <button type="button" onClick={() => setShowFinanceModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md">
+                  <CheckCircle size={14} /> {editingFinance ? "Update Ledger" : "Record Book Log"}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* TASK FORM MODAL */}
+      {showTaskModal && (
+        <div className="fixed inset-0 z-50 bg-[#000]/70 flex justify-center items-center p-4 backdrop-blur-xs">
+          <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative animate-fade-in-up">
+            <button onClick={() => setShowTaskModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"><X size={20} /></button>
+            <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2"><CheckSquare className="text-farm-400" /> {editingTask ? "Modify Task Assignment" : "Assign Farm Duty"}</h3>
+            
+            <form onSubmit={handleTaskSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Duty Description / Assignment Title *</label>
+                <input required className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={taskForm.title} onChange={e => setTaskForm({...taskForm, title: e.target.value})} placeholder="e.g. Fertilize Sector 3 Wheat" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Assign to Worker</label>
+                  <select 
+                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
+                    value={taskForm.assigned_to}
+                    onChange={e => setTaskForm({...taskForm, assigned_to: e.target.value})}
+                  >
+                    <option value="">General / Broadcast Task</option>
+                    {users.map(u => (
+                      <option key={u._id} value={u.username}>{u.username} ({u.role})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Priority Level</label>
+                  <select 
+                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500"
+                    value={taskForm.priority}
+                    onChange={e => setTaskForm({...taskForm, priority: e.target.value})}
+                  >
+                    <option value="Low">Low Priority</option>
+                    <option value="Medium">Medium Priority</option>
+                    <option value="High">High Priority</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Duty Due Date</label>
+                <input type="date" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={taskForm.due_date} onChange={e => setTaskForm({...taskForm, due_date: e.target.value})} />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Task Guidelines / Operational Instructions</label>
+                <textarea rows="2" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={taskForm.notes} onChange={e => setTaskForm({...taskForm, notes: e.target.value})} placeholder="Ensure irrigation valves are closed after 2 hours..." />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+                <button type="button" onClick={() => setShowTaskModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md">
+                  <CheckCircle size={14} /> {editingTask ? "Update Assignment" : "Assign Duty"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
-}
-
-const styles = {
-    nav: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 40px', background: '#121217', borderBottom: '1px solid #222', flexWrap: 'wrap', gap: '10px'},
-    navBtn: {background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', padding: '8px 16px', borderRadius: '8px', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px'},
-    navBtnLogout: {background: '#3a0c11', color: '#ff8a8a', border: '1px solid #5a181e', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'},
-    authCard: {background: '#121217', padding: '40px', borderRadius: '15px', width: '340px', border: '1px solid #222', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column'},
-    input: {display: 'block', width: '100%', padding: '12px 16px', margin: '10px 0', background: '#1a1a24', border: '1px solid #333', color: 'white', borderRadius: '8px', outline: 'none', fontSize: '14px', transition: 'border-color 0.2s', boxSizing: 'border-box'},
-    inputInline: {padding: '12px 16px', background: '#121217', border: '1px solid #333', color: 'white', borderRadius: '8px', flex: '1', minWidth: '180px', outline: 'none', fontSize: '14px', transition: 'all 0.2s'},
-    selectInline: {padding: '12px 16px', background: '#121217', border: '1px solid #333', color: 'white', borderRadius: '8px', outline: 'none', cursor: 'pointer', fontSize: '14px'},
-    cardSelect: {padding: '6px 12px', background: '#1a1a24', border: '1px solid #333', color: 'white', borderRadius: '6px', outline: 'none', fontSize: '12px', cursor: 'pointer'},
-    formContainer: {display: 'flex', flexWrap: 'wrap', gap: '10px', width: '100%', alignItems: 'center'},
-    btnGreen: {width: '100%', padding: '12px', background: '#2d6a4f', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px', transition: 'background 0.2s', marginTop: '10px'},
-    btnGreenSmall: {padding: '12px 24px', background: '#2d6a4f', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '8px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', transition: 'background 0.2s'},
-    btnDone: {background: '#1b4332', color: '#80ed99', border: '1px solid #2d6a4f', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', transition: 'background 0.2s'},
-    btnDanger: {background: '#3a0c11', color: '#ff8a8a', border: '1px solid #5a181e', padding: '8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'},
-    btnWA: {marginTop: '30px', width: '100%', padding: '15px', background: '#25D366', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'transform 0.2s, box-shadow 0.2s'},
-    card: {background: '#121217', padding: '18px 24px', borderRadius: '12px', borderLeft: '4px solid #2d6a4f', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', transition: 'all 0.3s ease'},
-    badge: {background: '#1b4332', color: '#80ed99', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', border: '1px solid rgba(128, 237, 153, 0.2)'},
-    financeSummaryRow: {display: 'flex', gap: '15px', marginBottom: '25px', width: '100%'},
-    financeSummaryCard: {flex: '1', background: '#121217', padding: '20px', borderRadius: '12px', border: '1px solid #222', boxShadow: '0 4px 10px rgba(0,0,0,0.2)'},
-    emptyText: {color: '#555', textAlign: 'center', marginTop: '30px', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'},
-    alert: {padding: '14px 24px', borderRadius: '8px', color: 'white', fontSize: '14px', marginBottom: '20px', width: '340px', boxSizing: 'border-box', boxShadow: '0 4px 15px rgba(0,0,0,0.2)'},
-    floatingAlert: {position: 'fixed', top: '90px', right: '20px', padding: '14px 24px', borderRadius: '8px', color: 'white', fontSize: '14px', zIndex: 1000, boxShadow: '0 6px 20px rgba(0,0,0,0.3)', animation: 'fadeInUp 0.3s ease-out'}
 }
 
 export default App;

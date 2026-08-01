@@ -17,8 +17,9 @@ api.interceptors.request.use((config) => {
     return Promise.reject(error);
 });
 
-export const signup = (username, email, password) => {
-    return api.post('/signup', { username, email, password });
+// --- AUTH / USER ROUTES ---
+export const signup = (username, email, password, role = "worker") => {
+    return api.post('/signup', { username, email, password, role });
 };
 
 export const login = (email, password) => {
@@ -28,18 +29,31 @@ export const login = (email, password) => {
     return api.post('/login', params);
 };
 
+export const getUsers = () => api.get('/users');
+export const deleteUser = (id) => api.delete(`/users/${id}`);
+
+// --- CROPS ROUTES ---
 export const getCrops = () => api.get('/crops');
 export const addCrop = (crop) => api.post('/crops', crop);
+export const updateCrop = (id, crop) => api.put(`/crops/${id}`, crop);
 export const updateCropStatus = (id, status) => api.patch(`/crops/${id}`, { status });
 export const deleteCrop = (id) => api.delete(`/crops/${id}`);
 
+// --- FINANCE ROUTES ---
 export const getFinance = () => api.get('/finance');
 export const addFinance = (entry) => api.post('/finance', entry);
+export const updateFinance = (id, entry) => api.put(`/finance/${id}`, entry);
 export const deleteFinance = (id) => api.delete(`/finance/${id}`);
 
+// --- TASKS ROUTES ---
 export const getTasks = () => api.get('/tasks');
 export const addTask = (task) => api.post('/tasks', task);
+export const updateTask = (id, task) => api.put(`/tasks/${id}`, task);
 export const completeTask = (id) => api.patch(`/tasks/${id}`);
 export const deleteTask = (id) => api.delete(`/tasks/${id}`);
+
+// --- BACKUP & RESTORE ---
+export const getBackup = () => api.get('/backup');
+export const restoreBackup = (payload) => api.post('/restore', payload);
 
 export default api;
