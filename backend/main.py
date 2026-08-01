@@ -20,6 +20,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- STARTUP EVENT — AUTO-CREATE DEFAULT ADMIN ---
+@app.on_event("startup")
+async def create_default_admin():
+    try:
+        # Check if we can connect to MongoDB
+        from database import client
+        await client.admin.command('ping')
+        print("✅ Successfully connected to MongoDB!")
+        
+        # Check if any admin account exists
+        admin_user = await users_col.find_one({"role": "admin"})
+        if not admin_user:
+            # Create default administrator account
+            hashed_password = get_password_hash("adminpassword123")
+            default_admin = {
+                "username": "admin",
+                "email": "admin@farm.com",
+                "role": "admin",
+                "password": hashed_password
+            }
+            await users_col.insert_one(default_admin)
+            print("👑 [Seeder] Created default administrator account:")
+            print("   Email: admin@farm.com")
+            print("   Password: adminpassword123")
+        else:
+            print("👑 [Status] Administrator account verified.")
+    except Exception as e:
+        print(f"⚠️ Database Warning: Could not initialize or seed default admin on startup: {e}")
+
 # --- SECURITY SCHEME ---
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
