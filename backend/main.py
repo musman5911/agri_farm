@@ -40,6 +40,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         )
     return user
 
+# --- HEALTH CHECK ROUTE ---
+@app.get("/")
+async def root():
+    return {"message": "Welcome to AgriFarm Management API!"}
+
 # --- AUTH ROUTES ---
 @app.post("/signup", status_code=status.HTTP_201_CREATED, response_model=UserOut)
 async def signup(user: User):
