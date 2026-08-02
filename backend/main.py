@@ -27,8 +27,79 @@ app.add_middleware(
 )
 
 # --- STARTUP EVENT — VERIFY DATABASE CONNECTION ---
+def is_time_to_run(schedule: str, last_run_ts: float, now: datetime) -> bool:
+    """Evaluate if the scheduled time has arrived and hasn't already executed on the calendar day."""
+    if not last_run_ts:
+        return True  # never run before, trigger immediately as an initial status check!
+        
+    last_run_dt = datetime.fromtimestamp(last_run_ts)
+    
+    # Simple, highly portable schedule interval logic
+    if schedule == "0 8 * * *":  # Daily
+        if now.date() > last_run_dt.date() and now.hour >= 8:
+            return True
+    elif schedule == "0 8 * * 0":  # Weekly (Sunday)
+        if now.weekday() == 6 and now.date() > last_run_dt.date() and now.hour >= 8:
+            return True
+    elif schedule == "0 8 1 * *":  # Monthly (1st of month)
+        if now.day == 1 and now.date() > last_run_dt.date() and now.hour >= 8:
+            return True
+    return False
+
+async def build_and_send_automation_digest(recipient_emails_str: str) -> bool:
+    """Compiles total database metrics, bypasses pagination caps, formats a luxury HTML mailer, and dispatches."""
+    recipients = [r.strip() for r in recipient_emails_str.split(",") if r.strip()]
+    if not recipients:
+        return False
+        
+    # Fetch database metrics
+    crops_count = await crops_col.count_documents({})
+    tasks_pending = await tasks_col.count_documents({"status": "Pending"})
+    
+    # Aggregate ledger sum without any pagination limit (Audit feedback fix!)
+    total_income = 0.0
+    total_expense = 0.0
+    cursor = finance_col.find()
+    async for f in cursor:
+        amount = f.get("amount", 0.0)
+        if f.get("type") == "income":
+            total_income += amount
+        elif f.get("type") == "expense":
+            total_expense += amount
+    net_profit = total_income - total_expense
+    
+    subject = "AgriFarm Command Center — Scheduled Operations Report"
+    html_content = f"""
+    <div style="font-family: sans-serif; padding: 30px; background-color: #faf9f6; color: #1c1917; border-radius: 16px; max-width: 500px; margin: 0 auto; border: 1px solid #e2dfdb; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+        <div style="text-align: center; margin-bottom: 25px;">
+            <img src="https://raw.githubusercontent.com/musman5911/agri_farm/main/frontend/public/logo.png" style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid #165b33; object-fit: cover;" alt="Usman Agri Farm Logo" />
+            <h1 style="color: #14532d; font-size: 22px; margin: 10px 0 0 0; font-weight: 800;">Usman Agri Farm</h1>
+            <p style="font-size: 11px; text-transform: uppercase; color: #15803d; letter-spacing: 1.5px; margin: 4px 0 0 0; font-weight: bold;">Advanced Crop Management</p>
+        </div>
+        
+        <h2 style="color: #165b33; border-bottom: 1px solid #e7e5dc; padding-bottom: 10px; margin-top: 0; font-size: 17px; font-weight: 700;">Scheduled Operations Report</h2>
+        <p style="font-size: 14px; line-height: 1.6; color: #44403c;">This is your automated farm operational digest compiled by the AgriFarm Command Scheduler.</p>
+        
+        <div style="background-color: #fdfdfb; border: 1px solid #e7e5dc; padding: 18px; border-radius: 10px; margin: 20px 0;">
+            <h3 style="color: #14532d; margin-top: 0; font-size: 14px; font-weight: 700;">Operations Summary</h3>
+            <p style="margin: 8px 0; font-size: 13px; color: #44403c;"><strong>Total Crops Planted:</strong> {crops_count} sectors</p>
+            <p style="margin: 8px 0; font-size: 13px; color: #44403c;"><strong>Pending Care Assignments:</strong> {tasks_pending} duties</p>
+            <p style="margin: 8px 0; font-size: 13px; color: #44403c;"><strong>Direct Ledger Balance:</strong> <span style="color: { '#16a34a' if net_profit >= 0 else '#dc2626' }; font-weight: bold;">${net_profit:,.2f}</span></p>
+        </div>
+        
+        <p style="font-size: 11.5px; color: #78716c; line-height: 1.5;">This report transmission was requested and dispatched via your Usman Agri Farm Mailer node.</p>
+    </div>
+    """
+    
+    success = False
+    for email in recipients:
+        sent = await send_email(email, subject, html_content)
+        if sent:
+            success = True
+    return success
+
 async def run_automation_scheduler():
-    """Real, lightweight background asyncio scheduler engine simulating cron digests."""
+    """Real, background asyncio scheduler engine enforcing daily/weekly/monthly cron settings."""
     print("⏰ [Cron Engine] Background scheduler engine initialized and monitoring triggers.")
     while True:
         try:
@@ -37,8 +108,23 @@ async def run_automation_scheduler():
             if settings:
                 value = settings.get("value", {})
                 if value.get("cron_enabled"):
+                    schedule = value.get("schedule", "0 8 * * *")
                     recipient = value.get("recipient", "")
-                    print(f"⏰ [Cron Engine] Automated scheduled report cycle executed. Digest sent to: {recipient}")
+                    last_run_ts = value.get("last_run", 0.0)
+                    
+                    now = datetime.utcnow()
+                    if is_time_to_run(schedule, last_run_ts, now):
+                        print(f"⏰ [Cron Engine] Executing scheduled report cycle for {recipient}...")
+                        sent = await build_and_send_automation_digest(recipient)
+                        if sent:
+                            value["last_run"] = now.timestamp()
+                            await db.settings.update_one(
+                                {"key": "automations"},
+                                {"$set": {"value": value}}
+                            )
+                            print(f"⏰ [Cron Engine] Report cycle successfully completed. Next run scheduled.")
+                        else:
+                            print(f"⚠️ [Cron Engine] Failed to dispatch scheduled report email.")
         except Exception as e:
             print(f"⚠️ [Cron Engine] Background scheduler loop issue: {e}")
 
@@ -345,64 +431,21 @@ async def trigger_automations(current_user: dict = Depends(get_current_user)):
     if not recipients_str:
         raise HTTPException(status_code=400, detail="No recipient emails are configured in your automation rules.")
         
-    recipients = [r.strip() for r in recipients_str.split(",") if r.strip()]
-    if not recipients:
-         raise HTTPException(status_code=400, detail="Invalid recipient emails format.")
-         
-    # Fetch database metrics for email content
-    crops_count = await crops_col.count_documents({})
-    tasks_pending = await tasks_col.count_documents({"status": "Pending"})
-    
-    # Calculate some ledger summary
-    cursor = finance_col.find()
-    fin_entries = await cursor.to_list(100)
-    total_income = sum(f.get("amount", 0) for f in fin_entries if f.get("type") == "income")
-    total_expense = sum(f.get("amount", 0) for f in fin_entries if f.get("type") == "expense")
-    net_profit = total_income - total_expense
-    
-    subject = "AgriFarm Command Center — Scheduled Operations Report"
-    html_content = f"""
-    <div style="font-family: sans-serif; padding: 30px; background-color: #faf9f6; color: #1c1917; border-radius: 16px; max-width: 500px; margin: 0 auto; border: 1px solid #e2dfdb; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-        <div style="text-align: center; margin-bottom: 25px;">
-            <img src="https://raw.githubusercontent.com/musman5911/agri_farm/main/frontend/public/logo.png" style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid #165b33; object-fit: cover;" alt="Usman Agri Farm Logo" />
-            <h1 style="color: #14532d; font-size: 22px; margin: 10px 0 0 0; font-weight: 800;">Usman Agri Farm</h1>
-            <p style="font-size: 11px; text-transform: uppercase; color: #15803d; letter-spacing: 1.5px; margin: 4px 0 0 0; font-weight: bold;">Advanced Crop Management</p>
-        </div>
-        
-        <h2 style="color: #165b33; border-bottom: 1px solid #e7e5dc; padding-bottom: 10px; margin-top: 0; font-size: 17px; font-weight: 700;">Scheduled Operations Report</h2>
-        <p style="font-size: 14px; line-height: 1.6; color: #44403c;">This is your requested automated farm operational digest compiled by the AgriFarm Command Scheduler.</p>
-        
-        <div style="background-color: #fdfdfb; border: 1px solid #e7e5dc; padding: 18px; border-radius: 10px; margin: 20px 0;">
-            <h3 style="color: #14532d; margin-top: 0; font-size: 14px; font-weight: 700;">Operations Summary</h3>
-            <p style="margin: 8px 0; font-size: 13px; color: #44403c;"><strong>Total Crops Planted:</strong> {crops_count} sectors</p>
-            <p style="margin: 8px 0; font-size: 13px; color: #44403c;"><strong>Pending Care Assignments:</strong> {tasks_pending} duties</p>
-            <p style="margin: 8px 0; font-size: 13px; color: #44403c;"><strong>Direct Ledger Balance:</strong> <span style="color: { '#16a34a' if net_profit >= 0 else '#dc2626' }; font-weight: bold;">${net_profit:,.2f}</span></p>
-        </div>
-        
-        <p style="font-size: 11.5px; color: #78716c; line-height: 1.5;">This report transmission was requested and dispatched via your Usman Agri Farm Mailer node.</p>
-    </div>
-    """
-    
-    # Send email to each recipient
-    success_emails = []
-    failed_emails = []
-    for email in recipients:
-         sent = await send_email(email, subject, html_content)
-         if sent:
-             success_emails.append(email)
-         else:
-             failed_emails.append(email)
-             
-    if not success_emails:
+    sent = await build_and_send_automation_digest(recipients_str)
+    if not sent:
          raise HTTPException(
              status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-             detail=f"Mailer failed to deliver to any of the recipients: {', '.join(failed_emails)}"
+             detail="Mailer failed to deliver the automated report."
          )
          
+    settings_data["last_run"] = datetime.utcnow().timestamp()
+    await db.settings.update_one(
+        {"key": "automations"},
+        {"$set": {"value": settings_data}}
+    )
     return {
         "status": "ok", 
-        "message": f"Digest successfully dispatched to: {', '.join(success_emails)}",
-        "failures": failed_emails
+        "message": f"Digest successfully dispatched to: {recipients_str}"
     }
 
 # --- PASSWORD RESET FLOWS ---
