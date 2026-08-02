@@ -809,7 +809,7 @@ function App() {
   // --- RENDER MAIN INTERFACE ---
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${
-      isDark ? 'bg-[#070b13] text-slate-100' : 'bg-slate-50 text-slate-800'
+      isDark ? 'bg-[#070b13] text-slate-100' : 'bg-[#fcfaf2] text-[#1c1917]'
     } ${textClassMap[textSize]}`}>
       
       {/* Container wrapper matching flock_farm */}
@@ -883,7 +883,7 @@ function App() {
         <div className={`flex items-center gap-1 overflow-x-auto border-b pb-1.5 shrink-0 select-none custom-scrollbar ${
           isDark ? 'border-slate-800' : 'border-slate-200'
         }`}>
-          {navItems.map(({ id, label, icon: Icon }) => {
+          {navItems.filter(item => item.id !== 'summary' || userRole === 'admin').map(({ id, label, icon: Icon }) => {
             const active = activeTab === id;
             return (
               <button
@@ -1014,7 +1014,7 @@ function App() {
                 
                 {/* Active crops preview card */}
                 <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                 }`}>
                   <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-3 mb-4">
                     <h4 className="font-extrabold flex items-center gap-2"><Sprout size={16} className="text-farm-400" /> Planted Sectors</h4>
@@ -1041,7 +1041,7 @@ function App() {
 
                 {/* Duty board preview card */}
                 <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                 }`}>
                   <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-3 mb-4">
                     <h4 className="font-extrabold flex items-center gap-2"><HeartPulse size={16} className="text-farm-400" /> Care & Operations Roster</h4>
@@ -1109,19 +1109,19 @@ function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {crops.length === 0 ? (
                   <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                   }`}>
                     No crops logged. Get started by planting your first crop.
                   </div>
                 ) : filteredCrops.length === 0 ? (
                   <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                   }`}>
                     No crops matching this phase filter were found.
                   </div>
                 ) : filteredCrops.map((c, idx) => (
                   <div key={c._id} className={`border rounded-2xl p-5 shadow-sm hover:border-slate-400 dark:hover:border-slate-700/80 transition-all flex flex-col justify-between animate-fade-in ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                   }`} style={{animationDelay: `${idx * 0.05}s`}}>
                     <div className="space-y-4">
                       {/* Name & Badge */}
@@ -1170,16 +1170,18 @@ function App() {
                     </div>
 
                     {/* Footer Actions */}
-                    <div className={`flex justify-end gap-1.5 mt-5 pt-3 border-t ${
-                      isDark ? 'border-slate-800' : 'border-slate-200'
-                    }`}>
-                      <button onClick={() => handleEditCrop(c)} className="p-1.5 text-slate-400 hover:text-farm-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
-                        <Edit3 size={14} />
-                      </button>
-                      <button onClick={() => handleDeleteCrop(c._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    {userRole === 'admin' && (
+                      <div className={`flex justify-end gap-1.5 mt-5 pt-3 border-t ${
+                        isDark ? 'border-slate-800' : 'border-slate-200'
+                      }`}>
+                        <button onClick={() => handleEditCrop(c)} className="p-1.5 text-slate-400 hover:text-farm-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Edit Crop">
+                          <Edit3 size={14} />
+                        </button>
+                        <button onClick={() => handleDeleteCrop(c._id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer" title="Delete Crop">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1220,19 +1222,19 @@ function App() {
               {/* Financial Breakdown Panel */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                 }`}>
                   <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Gross Income</p>
                   <h4 className="text-2xl font-black text-farm-400 mt-1">${totalIncome.toLocaleString()}</h4>
                 </div>
                 <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                 }`}>
                   <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Expenditures</p>
                   <h4 className="text-2xl font-black text-red-400 mt-1">${totalExpense.toLocaleString()}</h4>
                 </div>
                 <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                 }`}>
                   <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Net profit margin</p>
                   <h4 className={`text-2xl font-black mt-1 ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
@@ -1243,7 +1245,7 @@ function App() {
 
               {/* Finance list table */}
               <div className={`border rounded-2xl overflow-hidden shadow-sm ${
-                isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
               }`}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
@@ -1290,14 +1292,18 @@ function App() {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-right whitespace-nowrap">
-                            <div className="inline-flex gap-1">
-                              <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg cursor-pointer">
-                                <Edit3 size={14} />
-                              </button>
-                              <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg cursor-pointer">
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
+                            {userRole === 'admin' ? (
+                              <div className="inline-flex gap-1">
+                                <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg cursor-pointer" title="Edit Log">
+                                  <Edit3 size={14} />
+                                </button>
+                                <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg cursor-pointer" title="Delete Log">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 text-xs italic">Read-only</span>
+                            )}
                           </td>
                         </tr>
                         );
@@ -1331,12 +1337,14 @@ function App() {
                     <option value="Pending">Pending / In-Progress</option>
                     <option value="Completed">Completed Duties</option>
                   </select>
-                  <button 
-                    onClick={() => { setEditingTask(null); setTaskForm({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' }); setShowTaskModal(true); }}
-                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer transition-transform hover:scale-105 ml-auto shrink-0"
-                  >
-                    <Plus size={16} /> Schedule Care
-                  </button>
+                  {userRole === 'admin' && (
+                    <button 
+                      onClick={() => { setEditingTask(null); setTaskForm({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' }); setShowTaskModal(true); }}
+                      className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer transition-transform hover:scale-105 ml-auto shrink-0 animate-fade-in"
+                    >
+                      <Plus size={16} /> Schedule Care
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1344,19 +1352,19 @@ function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {tasks.length === 0 ? (
                   <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                   }`}>
                     Duty care roster is currently clean.
                   </div>
                 ) : filteredTasks.length === 0 ? (
                   <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                   }`}>
                     No duty assignments found matching this status.
                   </div>
                 ) : filteredTasks.map((t, idx) => (
                   <div key={t._id} className={`border rounded-2xl p-5 shadow-sm flex flex-col justify-between ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                   }`} style={{
                     borderLeft: `4px solid ${t.status === 'Completed' ? '#475569' : t.priority === 'High' ? '#ef4444' : '#22c55e'}`,
                     opacity: t.status === 'Completed' ? 0.6 : 1,
@@ -1407,14 +1415,16 @@ function App() {
                         <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle size={12} /> Duties Completed</span>
                       )}
                       
-                      <div className="flex gap-1">
-                        <button onClick={() => handleEditTask(t)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg transition-colors cursor-pointer">
-                          <Edit3 size={14} />
-                        </button>
-                        <button onClick={() => handleDeleteTask(t._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      {userRole === 'admin' && (
+                        <div className="flex gap-1">
+                          <button onClick={() => handleEditTask(t)} className="p-1.5 text-slate-400 hover:text-farm-500 rounded-lg transition-colors cursor-pointer" title="Edit Task">
+                            <Edit3 size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteTask(t._id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer" title="Delete Task">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1423,7 +1433,7 @@ function App() {
           )}
 
           {/* ───────────────── VIEW: MONTHLY SUMMARY ───────────────── */}
-          {activeTab === 'summary' && (
+          {activeTab === 'summary' && userRole === 'admin' && (
             <div className="space-y-6 animate-fade-in">
               <div className={`border-b pb-5 ${
                 isDark ? 'border-slate-800' : 'border-slate-200'
@@ -1436,7 +1446,7 @@ function App() {
                 
                 {/* Operations Health Checklist */}
                 <div className={`border p-6 rounded-2xl shadow-sm space-y-4 ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                 }`}>
                   <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800/10 dark:border-slate-800 pb-3">Operational Milestones</h4>
                   <ul className="space-y-3 text-xs md:text-sm">
@@ -1461,7 +1471,7 @@ function App() {
 
                 {/* Ledger Breakdown */}
                 <div className={`border p-6 rounded-2xl shadow-sm space-y-4 ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
                 }`}>
                   <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800/10 dark:border-slate-800 pb-3">Yield Classification</h4>
                   <div className="space-y-3">
@@ -1484,7 +1494,7 @@ function App() {
 
               {/* Monthly Ledger Flow Timeline */}
               <div className={`border p-6 rounded-2xl shadow-sm ${
-                isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+                isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
               }`}>
                 <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800/10 dark:border-slate-800 pb-3 mb-4">Operations Ledger Log History</h4>
                 <div className="space-y-3">

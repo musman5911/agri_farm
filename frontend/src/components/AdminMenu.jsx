@@ -67,11 +67,14 @@ export default function AdminMenu({
   const [pwMsg, setPwMsg] = useState(null);
   const [pwCode, setPwCode] = useState('');
   const [pwCodeSent, setPwCodeSent] = useState(false);
+  const [pwVerifyMethod, setPwVerifyMethod] = useState('password'); // 'password' or 'email'
 
   // New Worker Form States
   const [workerForm, setWorkerForm] = useState({ username: '', email: '', password: '', role: 'worker' });
   const [resetWorkerId, setResetWorkerId] = useState(null);
   const [workerNewPw, setWorkerNewPw] = useState('');
+  const [workerNewUsername, setWorkerNewUsername] = useState('');
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState('');
 
   // Automations & Alerts State
   const [autoSettings, setAutoSettings] = useState({
@@ -110,6 +113,7 @@ export default function AdminMenu({
       setPwMsg(null);
       setPwCode('');
       setPwCodeSent(false);
+      setPwVerifyMethod('password');
       setMyEmail(currentUserEmail || '');
       setEmailMsg(null);
       setEmailCode('');
@@ -117,6 +121,8 @@ export default function AdminMenu({
       setWorkerForm({ username: '', email: '', password: '', role: 'worker' });
       setResetWorkerId(null);
       setWorkerNewPw('');
+      setWorkerNewUsername('');
+      setAdminConfirmPassword('');
       setAutoMsg(null);
     }
   }, [open, currentUserEmail]);
@@ -243,6 +249,19 @@ export default function AdminMenu({
       setAutoMsg({ type: 'ok', text: 'Automation configurations successfully saved to the database!' });
     } catch (err) {
       setAutoMsg({ type: 'err', text: err.response?.data?.detail || 'Failed to save automation configurations.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleTriggerImmediateDigest = async () => {
+    setSubmitting(true);
+    setAutoMsg(null);
+    try {
+      const res = await api.triggerImmediateDigest();
+      setAutoMsg({ type: 'ok', text: res.data.message || 'Immediate email digest dispatched successfully!' });
+    } catch (err) {
+      setAutoMsg({ type: 'err', text: err.response?.data?.detail || 'Failed to dispatch email digest.' });
     } finally {
       setSubmitting(false);
     }
@@ -552,20 +571,28 @@ export default function AdminMenu({
     }
   };
 
-  // --- Admin Change Worker Password ---
-  const handleResetWorkerPassword = async (id, name) => {
-    if (!workerNewPw.trim() || workerNewPw.length < 4) {
-      return alert("Password must be at least 4 characters.");
+  // --- Admin Edit Worker Profile (Username and Password) ---
+  const handleEditWorkerProfile = async (id, oldName) => {
+    if (!workerNewUsername.trim()) {
+      return showAlert("Username cannot be empty.", true);
     }
+    if (!adminConfirmPassword) {
+      return showAlert("Please enter your current administrator password to confirm.", true);
+    }
+    setSubmitting(true);
     setActionId(id);
     try {
-      await api.changeWorkerPassword(id, workerNewPw);
-      showAlert(`Password for worker '${name}' has been updated!`);
+      await api.editWorkerProfile(id, workerNewUsername, workerNewPw, adminConfirmPassword);
+      showAlert(`Profile for operative '${oldName}' updated successfully!`);
       setResetWorkerId(null);
       setWorkerNewPw('');
+      setWorkerNewUsername('');
+      setAdminConfirmPassword('');
+      refreshData();
     } catch (err) {
-      showAlert("Failed to update worker password.", true);
+      showAlert(err.response?.data?.detail || "Failed to update profile.", true);
     } finally {
+      setSubmitting(false);
       setActionId(null);
     }
   };
@@ -802,9 +829,22 @@ export default function AdminMenu({
                   {/* Account Password change Form */}
                   {isAdmin ? (
                     <form onSubmit={handleChangePw} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
-                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                        <Lock size={14} /> Change Access Password
-                      </h4>
+                      <div className="flex justify-between items-center flex-wrap gap-2">
+                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                          <Lock size={14} /> Change Access Password
+                        </h4>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setPwVerifyMethod(pwVerifyMethod === 'password' ? 'email' : 'password');
+                            setCurPw('');
+                            setPwCode('');
+                          }}
+                          className="text-[10px] font-bold text-farm-600 hover:text-farm-500 uppercase tracking-wider underline cursor-pointer"
+                        >
+                          Verify via {pwVerifyMethod === 'password' ? 'Email Code' : 'Current Password'}
+                        </button>
+                      </div>
                       {pwMsg && (
                         <div className={`p-3 rounded-lg text-xs border ${
                           pwMsg.type === 'ok' ? 'bg-farm-950/40 border-farm-500 text-farm-300' : 'bg-red-950/40 border-red-500 text-red-300'
@@ -812,49 +852,71 @@ export default function AdminMenu({
                           {pwMsg.text}
                         </div>
                       )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Current Password</label>
-                          <input 
-                            type="password"
-                            className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
-                            placeholder="••••••••"
-                            value={curPw}
-                            onChange={e => setCurPw(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">New Password</label>
-                          <input 
-                            type="password"
-                            className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
-                            placeholder="Min 4 characters"
-                            value={newPw}
-                            onChange={e => setNewPw(e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1">
-                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">6-Digit Verification Code *</label>
-                          <input 
-                            type="text"
-                            maxLength={6}
-                            className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
-                            placeholder="e.g. 123456"
-                            value={pwCode}
-                            onChange={e => setPwCode(e.target.value)}
-                          />
-                        </div>
-                        <button 
-                          type="button"
-                          onClick={handleRequestPwCode}
-                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-all h-8 cursor-pointer flex items-center gap-1 shrink-0"
-                          disabled={submitting}
-                        >
-                          {submitting ? <Loader size={12} className="animate-spin" /> : <Clock size={12} />} Request Code
-                        </button>
+                      
+                      <div className="space-y-4">
+                        {pwVerifyMethod === 'password' ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Current Password *</label>
+                              <input 
+                                required
+                                type="password"
+                                className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                                placeholder="••••••••"
+                                value={curPw}
+                                onChange={e => setCurPw(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">New Password *</label>
+                              <input 
+                                required
+                                type="password"
+                                className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                                placeholder="Min 4 characters"
+                                value={newPw}
+                                onChange={e => setNewPw(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4 animate-fade-in">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">New Password *</label>
+                              <input 
+                                required
+                                type="password"
+                                className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                                placeholder="Min 4 characters"
+                                value={newPw}
+                                onChange={e => setNewPw(e.target.value)}
+                              />
+                            </div>
+                            
+                            <div className="flex gap-2 items-end">
+                              <div className="flex-1">
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">6-Digit Verification Code *</label>
+                                <input 
+                                  required
+                                  type="text"
+                                  maxLength={6}
+                                  className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                                  placeholder="e.g. 123456"
+                                  value={pwCode}
+                                  onChange={e => setPwCode(e.target.value)}
+                                />
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={handleRequestPwCode}
+                                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-all h-8 cursor-pointer flex items-center gap-1 shrink-0"
+                                disabled={submitting}
+                              >
+                                {submitting ? <Loader size={12} className="animate-spin" /> : <Clock size={12} />} Request Code
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <button 
@@ -968,7 +1030,9 @@ export default function AdminMenu({
                                             setResetWorkerId(null);
                                           } else {
                                             setResetWorkerId(u._id);
+                                            setWorkerNewUsername(u.username);
                                             setWorkerNewPw('');
+                                            setAdminConfirmPassword('');
                                           }
                                         }}
                                         className={`p-2 rounded-lg cursor-pointer ${
@@ -976,9 +1040,9 @@ export default function AdminMenu({
                                             ? 'text-farm-500 bg-farm-900/10' 
                                             : 'text-slate-400 hover:text-farm-500 hover:bg-slate-100 dark:hover:bg-slate-800'
                                         }`}
-                                        title="Reset Password"
+                                        title="Edit Profile"
                                       >
-                                        <Lock size={15} />
+                                        <Settings size={15} />
                                       </button>
                                       
                                       <button 
@@ -993,23 +1057,52 @@ export default function AdminMenu({
                                 </div>
                               </div>
                               
-                              {/* Inline Password Reset Box */}
+                              {/* Inline Profile Edit Box */}
                               {resetWorkerId === u._id && (
-                                <div className="flex gap-2 items-center bg-slate-900/10 dark:bg-slate-950/40 p-3 rounded-lg border border-slate-200 dark:border-slate-800/80 animate-fade-in">
-                                  <input 
-                                    type="password"
-                                    className="flex-1 bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
-                                    placeholder="Enter new password (Min 4 chars)"
-                                    value={workerNewPw}
-                                    onChange={e => setWorkerNewPw(e.target.value)}
-                                  />
-                                  <button 
-                                    onClick={() => handleResetWorkerPassword(u._id, u.username)}
-                                    className="px-3 py-1.5 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
-                                    disabled={actionId === u._id}
-                                  >
-                                    {actionId === u._id ? <Loader size={12} className="animate-spin" /> : <Check size={14} />} Save
-                                  </button>
+                                <div className="space-y-3 bg-slate-900/10 dark:bg-slate-950/40 p-4 rounded-lg border border-slate-200 dark:border-slate-800/80 animate-fade-in">
+                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Edit Operative Profile</p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                      <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">New Username</label>
+                                      <input 
+                                        type="text"
+                                        className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white font-medium"
+                                        placeholder="New username"
+                                        value={workerNewUsername}
+                                        onChange={e => setWorkerNewUsername(e.target.value)}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">New Password (Optional)</label>
+                                      <input 
+                                        type="password"
+                                        className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                                        placeholder="Leave blank to keep current"
+                                        value={workerNewPw}
+                                        onChange={e => setWorkerNewPw(e.target.value)}
+                                      />
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex gap-2 items-end">
+                                    <div className="flex-1">
+                                      <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Your Admin Current Password *</label>
+                                      <input 
+                                        type="password"
+                                        className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                                        placeholder="Enter your password to authorize"
+                                        value={adminConfirmPassword}
+                                        onChange={e => setAdminConfirmPassword(e.target.value)}
+                                      />
+                                    </div>
+                                    <button 
+                                      onClick={() => handleEditWorkerProfile(u._id, u.username)}
+                                      className="px-4 py-1.5 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer h-[30px]"
+                                      disabled={submitting}
+                                    >
+                                      {submitting && actionId === u._id ? <Loader size={12} className="animate-spin" /> : <Check size={14} />} Save
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -1071,12 +1164,12 @@ export default function AdminMenu({
                             </select>
                           </div>
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Recipient Alert Email</label>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Recipient Alert Emails (Comma-separated for multiple) *</label>
                             <input 
-                              type="email"
+                              type="text"
                               required
                               className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
-                              placeholder="manager@farm.com"
+                              placeholder="e.g. manager@farm.com, owner@farm.com"
                               value={autoSettings.recipient || ''}
                               onChange={e => setAutoSettings({...autoSettings, recipient: e.target.value})}
                               disabled={!autoSettings.cron_enabled}
@@ -1115,13 +1208,24 @@ export default function AdminMenu({
                         </div>
                       </div>
 
-                      <button 
-                        type="submit"
-                        className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer shadow-md"
-                        disabled={submitting}
-                      >
-                        {submitting ? <Loader size={14} className="animate-spin" /> : <Check size={14} />} Save Automation Rules
-                      </button>
+                      <div className="flex gap-2 flex-wrap">
+                        <button 
+                          type="submit"
+                          className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer shadow-md"
+                          disabled={submitting}
+                        >
+                          {submitting ? <Loader size={14} className="animate-spin" /> : <Check size={14} />} Save Automation Rules
+                        </button>
+                        
+                        <button 
+                          type="button"
+                          onClick={handleTriggerImmediateDigest}
+                          className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer shadow-md border border-slate-200 dark:border-slate-700"
+                          disabled={submitting}
+                        >
+                          {submitting ? <Loader size={14} className="animate-spin" /> : <Mail size={14} />} Send Test Alert Now
+                        </button>
+                      </div>
                     </form>
                   ) : (
                     <div className="p-6 text-slate-500 flex items-center gap-3">

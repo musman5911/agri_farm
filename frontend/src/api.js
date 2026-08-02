@@ -39,13 +39,14 @@ export const changePassword = (currentPassword, newPassword, code = "") => {
 export const updateMe = (email, code = "") => {
     return api.put('/users/me', { email, code });
 };
-export const changeWorkerPassword = (id, newPassword) => {
-    return api.patch(`/users/${id}/password`, { newPassword });
+export const editWorkerProfile = (id, newUsername, newPassword, adminPassword) => {
+    return api.patch(`/users/${id}/edit`, { newUsername, newPassword, adminPassword });
 };
 
 // --- AUTOMATION SETTINGS ---
 export const getAutomations = () => api.get('/settings/automations');
 export const saveAutomations = (settings) => api.put('/settings/automations', settings);
+export const triggerImmediateDigest = () => api.post('/settings/automations/trigger');
 export const checkSetup = () => api.get('/check-setup');
 export const forgotPassword = (email) => api.post('/forgot-password', { email });
 export const resetPassword = (email, code, newPassword) => {
