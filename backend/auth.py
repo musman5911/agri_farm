@@ -5,7 +5,10 @@ import os
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "farm_secret_key_99")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("❌ CRITICAL ERROR: 'SECRET_KEY' environment variable is not configured inside .env. Please set a strong random secret key to secure your logins.")
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

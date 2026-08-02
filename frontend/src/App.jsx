@@ -44,6 +44,7 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'worker');
   const [username, setUsername] = useState(localStorage.getItem('username') || 'Worker');
+  const [currentUserEmail, setCurrentUserEmail] = useState('');
   
   // Custom states for theme, tabs, and text settings
   const [activeTab, setActiveTab] = useState('dashboard'); 
@@ -161,6 +162,12 @@ function App() {
       const tasksRes = await api.getTasks(); setTasks(tasksRes.data);
       if (userRole === 'admin') {
         const usersRes = await api.getUsers(); setUsers(usersRes.data);
+      }
+      try {
+        const meRes = await api.getMe();
+        setCurrentUserEmail(meRes.data.email || '');
+      } catch (meErr) {
+        console.warn("Could not load current user profile:", meErr);
       }
     } catch (err) {
       console.error("Data refresh failed:", err);
@@ -552,7 +559,7 @@ function App() {
               <Sprout size={36} className="animate-bounce-soft" />
             </div>
           </div>
-          <h2 className="text-center text-farm-500 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+          <h2 className="text-center text-slate-800 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
             AgriFarm Command Hub
           </h2>
           <p className="text-center text-slate-500 dark:text-slate-400 text-xs mb-8 uppercase tracking-widest font-semibold">
@@ -613,7 +620,7 @@ function App() {
               <Sprout size={36} className="animate-bounce-soft" />
             </div>
           </div>
-          <h2 className="text-center text-farm-500 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+          <h2 className="text-center text-slate-800 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
             Initialize AgriFarm
           </h2>
           <p className="text-center text-slate-500 dark:text-slate-400 text-xs mb-8 uppercase tracking-widest font-semibold">
@@ -677,7 +684,7 @@ function App() {
               <Mail size={36} className="animate-bounce-soft" />
             </div>
           </div>
-          <h2 className="text-center text-farm-500 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+          <h2 className="text-center text-slate-800 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
             Admin Password Reset
           </h2>
           <p className="text-center text-slate-500 dark:text-slate-400 text-xs mb-8 uppercase tracking-widest font-semibold">
@@ -725,7 +732,7 @@ function App() {
               <Key size={36} className="animate-bounce-soft" />
             </div>
           </div>
-          <h2 className="text-center text-farm-500 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+          <h2 className="text-center text-slate-800 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
             Authorize Password Reset
           </h2>
           <p className="text-center text-slate-500 dark:text-slate-400 text-xs mb-8 uppercase tracking-widest font-semibold">
@@ -801,21 +808,21 @@ function App() {
       <div className="max-w-[1100px] w-full mx-auto px-4 md:px-6 py-4 space-y-4 flex-1 flex flex-col">
         
         {/* Header Block with adjusted left and right sides */}
-        <header className={`flex items-center justify-between pb-3 border-b transition-colors ${
+        <header className={`flex flex-wrap items-center justify-between gap-y-2 pb-3 border-b transition-colors ${
           isDark ? 'border-slate-800' : 'border-slate-200'
         }`}>
           {/* Left side: Logo, brand and subtitle */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <img 
               src="/logo.png" 
               className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm shrink-0" 
-              onError={(e) => { e.target.src = "https://raw.githubusercontent.com/musman5911/flock_farm/main/public/logo-icon.png"; }}
+              onError={(e) => { e.target.onerror = null; e.target.src = "/favicon.svg"; }}
             />
-            <div>
-              <h1 className={`font-black tracking-tight leading-none text-base md:text-lg ${isDark ? 'text-white' : 'text-slate-950'}`}>
+            <div className="min-w-0">
+              <h1 className={`font-black tracking-tight leading-none text-base md:text-lg truncate ${isDark ? 'text-white' : 'text-slate-950'}`} title="Usman Agri Farm">
                 Usman Agri Farm
               </h1>
-              <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">
+              <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1 truncate" title="Advanced Crop Management System">
                 Advanced Crop Management System
               </p>
             </div>
@@ -1681,6 +1688,8 @@ function App() {
         onClose={() => setAdminMenuOpen(false)}
         userRole={userRole}
         username={username}
+        currentUserEmail={currentUserEmail}
+        onUpdateEmail={setCurrentUserEmail}
         isDark={isDark}
         onToggleDark={setIsDark}
         textSize={textSize}

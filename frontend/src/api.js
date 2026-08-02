@@ -21,6 +21,7 @@ api.interceptors.request.use((config) => {
 export const signup = (username, email, password, role = "worker") => {
     return api.post('/signup', { username, email, password, role });
 };
+export const getMe = () => api.get('/users/me');
 
 export const login = (email, password) => {
     const params = new URLSearchParams();
@@ -33,6 +34,9 @@ export const getUsers = () => api.get('/users');
 export const deleteUser = (id) => api.delete(`/users/${id}`);
 export const changePassword = (currentPassword, newPassword) => {
     return api.post('/change-password', { currentPassword, newPassword });
+};
+export const updateMe = (email) => {
+    return api.put('/users/me', { email });
 };
 export const changeWorkerPassword = (id, newPassword) => {
     return api.patch(`/users/${id}/password`, { newPassword });

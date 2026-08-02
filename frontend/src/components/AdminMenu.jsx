@@ -13,7 +13,8 @@ import {
   Check, 
   Type,
   Loader,
-  AlertTriangle
+  AlertTriangle,
+  Mail
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import * as api from '../api';
@@ -29,6 +30,8 @@ export default function AdminMenu({
   onClose,
   userRole,
   username,
+  currentUserEmail,
+  onUpdateEmail,
   isDark,
   onToggleDark,
   textSize,
@@ -40,6 +43,10 @@ export default function AdminMenu({
   const [activeTab, setActiveTab] = useState('general');
   const [submitting, setSubmitting] = useState(false);
   const [actionId, setActionId] = useState(null);
+
+  // Email state
+  const [myEmail, setMyEmail] = useState(currentUserEmail || '');
+  const [emailMsg, setEmailMsg] = useState(null);
 
   // Password Form States
   const [curPw, setCurPw] = useState('');
@@ -57,11 +64,13 @@ export default function AdminMenu({
       setCurPw('');
       setNewPw('');
       setPwMsg(null);
+      setMyEmail(currentUserEmail || '');
+      setEmailMsg(null);
       setWorkerForm({ username: '', password: '', role: 'worker' });
       setResetWorkerId(null);
       setWorkerNewPw('');
     }
-  }, [open]);
+  }, [open, currentUserEmail]);
 
   // Lock body scrolling when modal open (prevent background scroll bleed)
   useEffect(() => {
@@ -111,6 +120,27 @@ export default function AdminMenu({
       setPwMsg({ type: 'ok', text: 'Password updated successfully!' });
     } catch (err) {
       setPwMsg({ type: 'err', text: err.response?.data?.detail || 'Failed to update password.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // --- Email Change ---
+  const handleUpdateEmail = async (e) => {
+    e.preventDefault();
+    if (!myEmail.trim()) {
+      return setEmailMsg({ type: 'err', text: 'Email cannot be empty.' });
+    }
+    setSubmitting(true);
+    setEmailMsg(null);
+    try {
+      await api.updateMe(myEmail);
+      setEmailMsg({ type: 'ok', text: 'Email updated successfully!' });
+      if (onUpdateEmail) {
+        onUpdateEmail(myEmail);
+      }
+    } catch (err) {
+      setEmailMsg({ type: 'err', text: err.response?.data?.detail || 'Failed to update email.' });
     } finally {
       setSubmitting(false);
     }
@@ -326,6 +356,39 @@ export default function AdminMenu({
                     </div>
                   </div>
 
+                  {/* Administrator Profile Email Form */}
+                  {isAdmin && (
+                    <form onSubmit={handleUpdateEmail} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <Mail size={14} /> Administrator Email
+                      </h4>
+                      {emailMsg && (
+                        <div className={`p-3 rounded-lg text-xs border ${
+                          emailMsg.type === 'ok' ? 'bg-farm-950/40 border-farm-500 text-farm-300' : 'bg-red-950/40 border-red-500 text-red-300'
+                        }`}>
+                          {emailMsg.text}
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider text-slate-500 dark:text-slate-400">Email Address</label>
+                        <input 
+                          type="email"
+                          className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                          placeholder="admin@farm.com"
+                          value={myEmail}
+                          onChange={e => setMyEmail(e.target.value)}
+                        />
+                      </div>
+                      <button 
+                        type="submit"
+                        className="px-4 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer"
+                        disabled={submitting}
+                      >
+                        {submitting ? <Loader size={14} className="animate-spin" /> : <Check size={14} />} Update Email
+                      </button>
+                    </form>
+                  )}
+
                   {/* Account Password change Form */}
                   {isAdmin ? (
                     <form onSubmit={handleChangePw} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
@@ -525,9 +588,9 @@ export default function AdminMenu({
                       <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
                         <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">Database Backup Export</h5>
                         <p className="text-xs text-slate-500 leading-relaxed">Download a single-file atomic JSON backup containing all crops, financial logs, duties rosters, and worker lists.</p>
-                        <button onClick={handleExportBackup} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer">
-                          <Database size={14} /> Download JSON Backup
-                        </button>
+                      <button onClick={handleExportBackup} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer">
+                        <Database size={14} /> Download JSON Backup
+                      </button>
                       </div>
 
                       {/* Upload & Restore database */}

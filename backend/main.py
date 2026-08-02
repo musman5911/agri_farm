@@ -15,17 +15,19 @@ from mailer import send_email
 app = FastAPI(title="AgriFarm Management API", version="1.0.0")
 
 # --- CORS MIDDLEWARE ---
+frontend_urls_str = os.getenv("FRONTEND_URL", "http://localhost:3030,http://127.0.0.1:3030")
+frontend_origins = [url.strip() for url in frontend_urls_str.split(",") if url.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- STARTUP EVENT — AUTO-CREATE DEFAULT ADMIN ---
+# --- STARTUP EVENT — VERIFY DATABASE CONNECTION ---
 @app.on_event("startup")
-async def create_default_admin():
+async def verify_db_connection():
     try:
         # Check if we can connect to MongoDB
         from database import client
@@ -35,25 +37,15 @@ async def create_default_admin():
         # Check if any admin account exists
         admin_user = await users_col.find_one({"role": "admin"})
         if not admin_user:
-            # Create default administrator account
-            hashed_password = get_password_hash("adminpassword123")
-            default_admin = {
-                "username": "admin",
-                "email": "admin@farm.com",
-                "role": "admin",
-                "password": hashed_password
-            }
-            await users_col.insert_one(default_admin)
-            print("👑 [Seeder] Created default administrator account:")
-            print("   Email: admin@farm.com")
-            print("   Password: adminpassword123")
+            print("👑 [Status] No administrator account is registered yet. First-time setup is active.")
         else:
             print("👑 [Status] Administrator account verified.")
     except Exception as e:
-        print(f"⚠️ Database Warning: Could not initialize or seed default admin on startup: {e}")
+        print(f"⚠️ Database Warning: Could not initialize connection on startup: {e}")
 
 # --- SECURITY SCHEME ---
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     payload = decode_access_token(token)
@@ -77,7 +69,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         )
     return user
 
-async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme)):
+async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional)):
     if not token:
         return None
     try:
@@ -185,6 +177,16 @@ async def change_password(payload: dict, current_user: dict = Depends(get_curren
     await users_col.update_one({"_id": current_user["_id"]}, {"$set": {"password": hashed_password}})
     return {"status": "ok"}
 
+@app.get("/users/me", response_model=UserOut)
+async def get_me(current_user: dict = Depends(get_current_user)):
+    return current_user
+
+@app.put("/users/me")
+async def update_me(payload: dict, current_user: dict = Depends(get_current_user)):
+    email = payload.get("email", "").lower().strip()
+    await users_col.update_one({"_id": current_user["_id"]}, {"$set": {"email": email}})
+    return {"status": "ok", "email": email}
+
 # --- PASSWORD RESET FLOWS ---
 @app.post("/forgot-password")
 async def forgot_password(payload: dict):
@@ -220,7 +222,12 @@ async def forgot_password(payload: dict):
         <p style="font-size: 11px; color: #64748b;">This code is strictly active for 10 minutes. If you did not authorize this action, secure your account immediately.</p>
     </div>
     """
-    await send_email(email, subject, html_content)
+    sent = await send_email(email, subject, html_content)
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SMTP service failed to deliver the verification code. Please check that SMTP credentials are configured correctly in the environment."
+        )
     return {"status": "ok", "message": "Verification code has been successfully emailed!"}
 
 @app.post("/reset-password")
@@ -252,10 +259,11 @@ async def reset_password(payload: dict):
 
 # --- USER MANAGEMENT ROUTES (ADMIN ONLY) ---
 @app.get("/users")
-async def get_users(current_user: dict = Depends(get_current_user)):
+async def get_users(skip: int = 0, limit: int = 100, current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin authorization required")
-    users = await users_col.find().to_list(100)
+    limit = min(limit, 100)
+    users = await users_col.find().skip(skip).to_list(limit)
     for u in users:
         u["_id"] = str(u["_id"])
         if "password" in u:
@@ -299,8 +307,9 @@ async def delete_user(user_id: str, current_user: dict = Depends(get_current_use
 
 # --- CROP ROUTES ---
 @app.get("/crops")
-async def get_crops(current_user: dict = Depends(get_current_user)):
-    data = await crops_col.find().to_list(100)
+async def get_crops(skip: int = 0, limit: int = 100, current_user: dict = Depends(get_current_user)):
+    limit = min(limit, 100)
+    data = await crops_col.find().skip(skip).to_list(limit)
     for d in data:
         d["_id"] = str(d["_id"])
     return data
@@ -353,8 +362,9 @@ async def delete_crop(crop_id: str, current_user: dict = Depends(get_current_use
 
 # --- FINANCE ROUTES ---
 @app.get("/finance")
-async def get_finance(current_user: dict = Depends(get_current_user)):
-    data = await finance_col.find().to_list(100)
+async def get_finance(skip: int = 0, limit: int = 100, current_user: dict = Depends(get_current_user)):
+    limit = min(limit, 100)
+    data = await finance_col.find().skip(skip).to_list(limit)
     for d in data:
         d["_id"] = str(d["_id"])
     return data
@@ -396,8 +406,9 @@ async def delete_finance(finance_id: str, current_user: dict = Depends(get_curre
 
 # --- TASK ROUTES ---
 @app.get("/tasks")
-async def get_tasks(current_user: dict = Depends(get_current_user)):
-    data = await tasks_col.find().to_list(100)
+async def get_tasks(skip: int = 0, limit: int = 100, current_user: dict = Depends(get_current_user)):
+    limit = min(limit, 100)
+    data = await tasks_col.find().skip(skip).to_list(limit)
     for d in data:
         d["_id"] = str(d["_id"])
     return data
