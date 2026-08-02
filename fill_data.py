@@ -66,8 +66,26 @@ try:
         token = login_res.json()["access_token"]
         print("   ✅ Access Token acquired successfully!")
     else:
-        detail = login_res.json().get('detail')
-        print(f"   ❌ Login failed (HTTP {login_res.status_code}): {detail}")
+        print("\n   ℹ️ Default admin login failed (your database already has a custom administrator).")
+        print("   👉 Let's log in with your custom registered Administrator credentials instead!")
+        try:
+            custom_email = input("   ✉️ Enter your Admin Email/Username: ").strip()
+            custom_password = input("   🔑 Enter your Admin Password: ").strip()
+            
+            login_data = {
+                "username": custom_email,
+                "password": custom_password
+            }
+            login_res = requests.post(f"{API}/login", data=login_data, timeout=5)
+            if login_res.status_code == 200:
+                token = login_res.json()["access_token"]
+                print("   ✅ Access Token acquired successfully!")
+            else:
+                detail = login_res.json().get('detail')
+                print(f"   ❌ Custom login failed (HTTP {login_res.status_code}): {detail}")
+        except KeyboardInterrupt:
+            print("\n   Seeding canceled.")
+            sys.exit(0)
 except Exception as e:
     # Check if the error is likely due to MongoDB connection timeout
     print(f"   ❌ Authentication failed: {e}")
