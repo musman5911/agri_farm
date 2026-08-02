@@ -165,6 +165,8 @@ async def change_password(payload: dict, current_user: dict = Depends(get_curren
          
     current_password = payload.get("currentPassword")
     new_password = payload.get("newPassword")
+    code = payload.get("code", "").strip()
+    
     if not current_password or not new_password:
         raise HTTPException(status_code=400, detail="Current and new passwords are required")
     if len(new_password) < 4:
@@ -172,6 +174,16 @@ async def change_password(payload: dict, current_user: dict = Depends(get_curren
     
     if not verify_password(current_password, current_user["password"]):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
+        
+    if not code:
+        raise HTTPException(status_code=400, detail="Verification code is required to update administrative password.")
+    # Verify code
+    current_email = current_user.get("email", "")
+    reset_record = await resets_col.find_one({"email": current_email, "code": code})
+    if not reset_record or reset_record.get("expiry", 0) < datetime.utcnow().timestamp():
+        raise HTTPException(status_code=400, detail="Invalid or expired verification code.")
+    # Clear code
+    await resets_col.delete_many({"email": current_email})
     
     hashed_password = get_password_hash(new_password)
     await users_col.update_one({"_id": current_user["_id"]}, {"$set": {"password": hashed_password}})
@@ -181,11 +193,87 @@ async def change_password(payload: dict, current_user: dict = Depends(get_curren
 async def get_me(current_user: dict = Depends(get_current_user)):
     return current_user
 
+@app.post("/request-profile-code")
+async def request_profile_code(current_user: dict = Depends(get_current_user)):
+    email = current_user.get("email", "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="No email address is registered on this account to send a code.")
+    
+    code = str(random.randint(100000, 999999))
+    expiry = datetime.utcnow().timestamp() + 600  # 10 minutes
+    
+    await resets_col.delete_many({"email": email})
+    await resets_col.insert_one({
+        "email": email,
+        "code": code,
+        "expiry": expiry
+    })
+    
+    subject = "AgriFarm Secure Profile Authorization Code"
+    html_content = f"""
+    <div style="font-family: sans-serif; padding: 25px; background-color: #0b0f19; color: #f1f5f9; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid #1e293b;">
+        <h2 style="color: #16a34a; border-bottom: 1px solid #1e293b; padding-bottom: 10px; margin-top: 0;">AgriFarm Command Profile Authorization</h2>
+        <p style="font-size: 14px; line-height: 1.5; color: #94a3b8;">You requested an administrative authorization code to update your profile (email or password). Use the code below to complete this action:</p>
+        <div style="background-color: #1e293b; padding: 15px; border-radius: 8px; font-size: 26px; font-weight: bold; text-align: center; color: #16a34a; letter-spacing: 4px; margin: 20px 0; border: 1px solid #334155;">
+            {code}
+        </div>
+        <p style="font-size: 11px; color: #64748b;">This code is strictly active for 10 minutes. If you did not authorize this action, secure your account immediately.</p>
+    </div>
+    """
+    sent = await send_email(email, subject, html_content)
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SMTP service failed to deliver the verification code. Please check that SMTP credentials are configured correctly in the environment."
+        )
+    return {"status": "ok", "message": "Verification code has been successfully emailed!"}
+
 @app.put("/users/me")
 async def update_me(payload: dict, current_user: dict = Depends(get_current_user)):
     email = payload.get("email", "").lower().strip()
+    code = payload.get("code", "").strip()
+    
+    if current_user.get("role") == "admin":
+        if not code:
+            raise HTTPException(status_code=400, detail="Verification code is required to update administrative email.")
+        # Verify code
+        current_email = current_user.get("email", "")
+        reset_record = await resets_col.find_one({"email": current_email, "code": code})
+        if not reset_record or reset_record.get("expiry", 0) < datetime.utcnow().timestamp():
+            raise HTTPException(status_code=400, detail="Invalid or expired verification code.")
+        # Clear code
+        await resets_col.delete_many({"email": current_email})
+        
     await users_col.update_one({"_id": current_user["_id"]}, {"$set": {"email": email}})
     return {"status": "ok", "email": email}
+
+# --- AUTOMATION SETTINGS ---
+@app.get("/settings/automations")
+async def get_automations(current_user: dict = Depends(get_current_user)):
+    settings = await db.settings.find_one({"key": "automations"})
+    if not settings:
+        return {
+            "cron_enabled": True,
+            "schedule": "0 8 * * *",
+            "alert_soil": True,
+            "alert_finance": True,
+            "alert_tasks": True,
+            "recipient": current_user.get("email", "")
+        }
+    settings_data = settings["value"]
+    # Ensure recipient matches current user if empty
+    if not settings_data.get("recipient"):
+        settings_data["recipient"] = current_user.get("email", "")
+    return settings_data
+
+@app.put("/settings/automations")
+async def save_automations(payload: dict, current_user: dict = Depends(get_current_user)):
+    await db.settings.update_one(
+        {"key": "automations"},
+        {"$set": {"value": payload}},
+        upsert=True
+    )
+    return {"status": "ok"}
 
 # --- PASSWORD RESET FLOWS ---
 @app.post("/forgot-password")

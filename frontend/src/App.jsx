@@ -539,7 +539,7 @@ function App() {
 
   // --- RENDER AUTHENTICATION & LOGIN ---
   if (!token) return (
-    <div className="min-h-screen bg-[#070b13] dark:bg-[#070b13] bg-slate-50 flex flex-col justify-center items-center px-4 transition-colors">
+    <div className="min-h-screen bg-[#faf9f6] dark:bg-[#070b13] flex flex-col justify-center items-center px-4 transition-colors">
       {alertMsg.text && (
         <div className={`mb-6 p-4 rounded-xl shadow-lg border text-sm max-w-sm w-full animate-fade-in ${
           alertMsg.isError ? 'bg-red-950/80 border-red-500 text-red-200' : 'bg-farm-950/80 border-farm-500 text-farm-200'
@@ -553,11 +553,13 @@ function App() {
       
       {/* ─── PANE 1: DEFAULT LOGIN SCREEN ─── */}
       {authMode === 'login' && (
-        <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover">
+        <div className="bg-[#fcfbf9] dark:bg-[#0f172a] border border-[#e2dfdb] dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover">
           <div className="flex justify-center mb-4">
-            <div className="bg-farm-900/20 text-farm-400 p-4 rounded-full border border-farm-500/20">
-              <Sprout size={36} className="animate-bounce-soft" />
-            </div>
+            <img 
+              src="/logo.png" 
+              className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 dark:border-slate-800 shadow-md shrink-0 animate-bounce-soft" 
+              onError={(e) => { e.target.onerror = null; e.target.src = "/favicon.svg"; }}
+            />
           </div>
           <h2 className="text-center text-slate-800 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
             AgriFarm Command Hub
@@ -614,11 +616,13 @@ function App() {
 
       {/* ─── PANE 2: FIRST-TIME SETUP REGISTRATION (ADMIN CREATION) ─── */}
       {authMode === 'register' && (
-        <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover animate-fade-in">
+        <div className="bg-[#fcfbf9] dark:bg-[#0f172a] border border-[#e2dfdb] dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover animate-fade-in">
           <div className="flex justify-center mb-4">
-            <div className="bg-farm-900/20 text-farm-400 p-4 rounded-full border border-farm-500/20">
-              <Sprout size={36} className="animate-bounce-soft" />
-            </div>
+            <img 
+              src="/logo.png" 
+              className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 dark:border-slate-800 shadow-md shrink-0 animate-bounce-soft" 
+              onError={(e) => { e.target.onerror = null; e.target.src = "/favicon.svg"; }}
+            />
           </div>
           <h2 className="text-center text-slate-800 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
             Initialize AgriFarm
@@ -678,11 +682,13 @@ function App() {
 
       {/* ─── PANE 3: FORGOT PASSWORD (REQUEST RESET CODE) ─── */}
       {authMode === 'forgot_send' && (
-        <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover animate-fade-in">
+        <div className="bg-[#fcfbf9] dark:bg-[#0f172a] border border-[#e2dfdb] dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover animate-fade-in">
           <div className="flex justify-center mb-4">
-            <div className="bg-farm-900/20 text-farm-400 p-4 rounded-full border border-farm-500/20">
-              <Mail size={36} className="animate-bounce-soft" />
-            </div>
+            <img 
+              src="/logo.png" 
+              className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 dark:border-slate-800 shadow-md shrink-0 animate-bounce-soft" 
+              onError={(e) => { e.target.onerror = null; e.target.src = "/favicon.svg"; }}
+            />
           </div>
           <h2 className="text-center text-slate-800 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
             Admin Password Reset
@@ -726,11 +732,13 @@ function App() {
 
       {/* ─── PANE 4: AUTHORIZE RESET PASSWORD WITH CODE ─── */}
       {authMode === 'forgot_reset' && (
-        <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover animate-fade-in">
+        <div className="bg-[#fcfbf9] dark:bg-[#0f172a] border border-[#e2dfdb] dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover animate-fade-in">
           <div className="flex justify-center mb-4">
-            <div className="bg-farm-900/20 text-farm-400 p-4 rounded-full border border-farm-500/20">
-              <Key size={36} className="animate-bounce-soft" />
-            </div>
+            <img 
+              src="/logo.png" 
+              className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 dark:border-slate-800 shadow-md shrink-0 animate-bounce-soft" 
+              onError={(e) => { e.target.onerror = null; e.target.src = "/favicon.svg"; }}
+            />
           </div>
           <h2 className="text-center text-slate-800 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
             Authorize Password Reset
@@ -923,7 +931,7 @@ function App() {
                 <div 
                   onClick={() => setModal('crops_planted')}
                   className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fcfbf9] border-[#e2dfdb] hover:shadow-md'
                   }`}
                 >
                   <div>
@@ -931,7 +939,9 @@ function App() {
                     <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{crops.length}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">{crops.filter(c => c.status === 'Growing').length} Growing phase</p>
                   </div>
-                  <div className="bg-farm-900/20 text-farm-400 p-3 rounded-xl border border-farm-500/10">
+                  <div className={`p-3 rounded-xl border ${
+                    isDark ? 'bg-farm-900/20 text-farm-400 border-farm-500/10' : 'bg-farm-50 text-farm-700 border-farm-200'
+                  }`}>
                     <Sprout size={20} />
                   </div>
                 </div>
@@ -939,17 +949,25 @@ function App() {
                 <div 
                   onClick={() => setModal('ledger_profit')}
                   className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fcfbf9] border-[#e2dfdb] hover:shadow-md'
                   }`}
                 >
                   <div>
                     <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">Operational Profit</p>
-                    <p className={`font-black mt-1 ${titleClassMap[textSize]} ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
+                    <p className={`font-black mt-1 ${titleClassMap[textSize]} ${
+                      netProfit >= 0 
+                        ? (isDark ? 'text-farm-400' : 'text-farm-700') 
+                        : (isDark ? 'text-red-400' : 'text-red-700')
+                    }`}>
                       ${netProfit.toLocaleString()}
                     </p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Income vs Outflow ledger</p>
                   </div>
-                  <div className={`p-3 rounded-xl border ${netProfit >= 0 ? 'bg-farm-900/20 text-farm-400 border-farm-500/10' : 'bg-red-950/40 text-red-400 border-red-900/20'}`}>
+                  <div className={`p-3 rounded-xl border ${
+                    netProfit >= 0 
+                      ? (isDark ? 'bg-farm-900/20 text-farm-400 border-farm-500/10' : 'bg-farm-50 text-farm-700 border-farm-200') 
+                      : (isDark ? 'bg-red-950/40 text-red-400 border-red-900/20' : 'bg-red-50 text-red-700 border-red-200')
+                  }`}>
                     {netProfit >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
                   </div>
                 </div>
@@ -957,7 +975,7 @@ function App() {
                 <div 
                   onClick={() => setModal('pending_duties')}
                   className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fcfbf9] border-[#e2dfdb] hover:shadow-md'
                   }`}
                 >
                   <div>
@@ -965,7 +983,9 @@ function App() {
                     <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{tasks.filter(t => t.status === 'Pending').length}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">{tasks.filter(t => t.status === 'Completed').length} Duties completed</p>
                   </div>
-                  <div className="bg-indigo-900/20 text-indigo-400 p-3 rounded-xl border border-indigo-900/20">
+                  <div className={`p-3 rounded-xl border ${
+                    isDark ? 'bg-indigo-900/20 text-indigo-400 border-indigo-900/20' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  }`}>
                     <CheckSquare size={20} />
                   </div>
                 </div>
@@ -973,7 +993,7 @@ function App() {
                 <div 
                   onClick={() => setModal('worker_operatives')}
                   className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fcfbf9] border-[#e2dfdb] hover:shadow-md'
                   }`}
                 >
                   <div>
@@ -981,7 +1001,9 @@ function App() {
                     <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{users.length || 1}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Active worker logins</p>
                   </div>
-                  <div className="bg-teal-900/20 text-teal-400 p-3 rounded-xl border border-teal-900/20">
+                  <div className={`p-3 rounded-xl border ${
+                    isDark ? 'bg-teal-900/20 text-teal-400 border-teal-900/20' : 'bg-teal-50 text-teal-700 border-teal-200'
+                  }`}>
                     <Users size={20} />
                   </div>
                 </div>
@@ -1695,6 +1717,9 @@ function App() {
         textSize={textSize}
         onTextSizeChange={handleTextSizeChange}
         users={users}
+        crops={crops}
+        finance={finance}
+        tasks={tasks}
         refreshData={refreshData}
         showAlert={showAlert}
       />

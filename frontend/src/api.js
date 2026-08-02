@@ -32,15 +32,20 @@ export const login = (email, password) => {
 
 export const getUsers = () => api.get('/users');
 export const deleteUser = (id) => api.delete(`/users/${id}`);
-export const changePassword = (currentPassword, newPassword) => {
-    return api.post('/change-password', { currentPassword, newPassword });
+export const requestProfileCode = () => api.post('/request-profile-code');
+export const changePassword = (currentPassword, newPassword, code = "") => {
+    return api.post('/change-password', { currentPassword, newPassword, code });
 };
-export const updateMe = (email) => {
-    return api.put('/users/me', { email });
+export const updateMe = (email, code = "") => {
+    return api.put('/users/me', { email, code });
 };
 export const changeWorkerPassword = (id, newPassword) => {
     return api.patch(`/users/${id}/password`, { newPassword });
 };
+
+// --- AUTOMATION SETTINGS ---
+export const getAutomations = () => api.get('/settings/automations');
+export const saveAutomations = (settings) => api.put('/settings/automations', settings);
 export const checkSetup = () => api.get('/check-setup');
 export const forgotPassword = (email) => api.post('/forgot-password', { email });
 export const resetPassword = (email, code, newPassword) => {
