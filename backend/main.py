@@ -7,7 +7,7 @@ import os
 import random
 from typing import Optional
 
-from database import users_col, crops_col, finance_col, tasks_col, resets_col
+from database import db, users_col, crops_col, finance_col, tasks_col, resets_col
 from models import User, UserOut, Crop, FinanceEntry, Task
 from auth import verify_password, get_password_hash, create_access_token, decode_access_token
 from mailer import send_email
