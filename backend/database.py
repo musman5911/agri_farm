@@ -22,8 +22,11 @@ except Exception:
 
 use_mock = False
 try:
+    # Use a higher timeout for remote Atlas cloud connections, and shorter for local
+    timeout_ms = 5000 if mongo_uri.startswith("mongodb+srv://") else 1500
+    
     # Try to connect synchronously to see if MongoDB is alive
-    check_client = pymongo.MongoClient(mongo_uri, serverSelectionTimeoutMS=800)
+    check_client = pymongo.MongoClient(mongo_uri, serverSelectionTimeoutMS=timeout_ms)
     check_client.server_info()  # triggers connection attempt
     print(f"🔌 [Database] Connected successfully to real MongoDB server. Database in use: '{db_name}'")
 except Exception as e:
