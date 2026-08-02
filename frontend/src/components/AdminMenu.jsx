@@ -1,0 +1,489 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  X, 
+  Settings, 
+  Users, 
+  Database, 
+  Sun, 
+  Moon, 
+  UserPlus, 
+  Trash2, 
+  ShieldCheck, 
+  Lock, 
+  Check, 
+  Type,
+  Loader,
+  AlertTriangle
+} from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import * as api from '../api';
+
+const ADMIN_TABS = [
+  { id: 'general', icon: Settings, label: 'General' },
+  { id: 'users', icon: Users, label: 'Workers' },
+  { id: 'backup', icon: Database, label: 'Database Backup' },
+];
+
+export default function AdminMenu({
+  open,
+  onClose,
+  userRole,
+  username,
+  isDark,
+  onToggleDark,
+  textSize,
+  onTextSizeChange,
+  users,
+  refreshData,
+  showAlert,
+}) {
+  const [activeTab, setActiveTab] = useState('general');
+  const [submitting, setSubmitting] = useState(false);
+  const [actionId, setActionId] = useState(null);
+
+  // Password Form States
+  const [curPw, setCurPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [pwMsg, setPwMsg] = useState(null);
+
+  // New Worker Form States
+  const [workerForm, setWorkerForm] = useState({ username: '', email: '', password: '', role: 'worker' });
+
+  useEffect(() => {
+    if (open) {
+      setActiveTab('general');
+      setCurPw('');
+      setNewPw('');
+      setPwMsg(null);
+      setWorkerForm({ username: '', email: '', password: '', role: 'worker' });
+    }
+  }, [open]);
+
+  // Lock body scrolling when modal open (prevent background scroll bleed)
+  useEffect(() => {
+    if (!open) return;
+    const scrollY = window.scrollY || document.documentElement.scrollTop;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    document.body._adminScrollY = scrollY;
+    
+    return () => {
+      const sy = document.body._adminScrollY || 0;
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, sy);
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  const isAdmin = userRole === 'admin';
+
+  // --- Password Change ---
+  const handleChangePw = async (e) => {
+    e.preventDefault();
+    setPwMsg(null);
+    if (!curPw || !newPw) {
+      return setPwMsg({ type: 'err', text: 'Please fill out both fields.' });
+    }
+    if (newPw.length < 4) {
+      return setPwMsg({ type: 'err', text: 'New password must be at least 4 characters.' });
+    }
+    setSubmitting(true);
+    try {
+      await api.changePassword(curPw, newPw);
+      setCurPw('');
+      setNewPw('');
+      setPwMsg({ type: 'ok', text: 'Password updated successfully!' });
+    } catch (err) {
+      setPwMsg({ type: 'err', text: err.response?.data?.detail || 'Failed to update password.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // --- Add Worker ---
+  const handleAddWorker = async (e) => {
+    e.preventDefault();
+    if (!workerForm.username || !workerForm.email || !workerForm.password) {
+      return showAlert("Please complete all worker fields.", true);
+    }
+    setSubmitting(true);
+    try {
+      await api.signup(workerForm.username, workerForm.email, workerForm.password, workerForm.role);
+      showAlert(`Worker account '${workerForm.username}' registered successfully!`);
+      setWorkerForm({ username: '', email: '', password: '', role: 'worker' });
+      refreshData();
+    } catch (err) {
+      showAlert(err.response?.data?.detail || "Failed to add worker account.", true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // --- Delete User ---
+  const handleDeleteUser = async (id) => {
+    if (!confirm("Are you sure you want to delete this worker account? They will lose access immediately.")) return;
+    setActionId(id);
+    try {
+      await api.deleteUser(id);
+      showAlert("Worker account deleted successfully.");
+      refreshData();
+    } catch (err) {
+      showAlert(err.response?.data?.detail || "Failed to delete user.", true);
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  // --- Backup Export ---
+  const handleExportBackup = async () => {
+    try {
+      const res = await api.getBackup();
+      const jsonStr = JSON.stringify(res.data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `agrifarm-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showAlert("JSON Database Backup exported successfully!");
+    } catch (err) {
+      showAlert("Backup export failed.", true);
+    }
+  };
+
+  // --- Backup Restore ---
+  const handleImportBackup = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm("Restore database from file? Warning: This will overwrite all your current farm data!")) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const payload = JSON.parse(event.target.result);
+        await api.restoreBackup(payload);
+        showAlert("Database restored successfully!");
+        refreshData();
+      } catch (err) {
+        showAlert("Database restore failed. Ensure valid JSON structure.", true);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/75 backdrop-blur-xs cursor-pointer"
+          />
+
+          {/* Modal Card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="relative w-full max-w-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden text-slate-800 dark:text-slate-100"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between p-5 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-farm-900/20 text-farm-500 dark:text-farm-400 rounded-xl">
+                  <Settings size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800 dark:text-white">Settings & Admin Hub</h3>
+                  <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">Control Panel</p>
+                </div>
+              </div>
+              <button 
+                onClick={onClose}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Inner Tabs Navigation */}
+            <div className="flex items-center gap-1.5 overflow-x-auto border-b border-slate-200 dark:border-slate-800 px-5 py-2.5 shrink-0 select-none custom-scrollbar bg-slate-50 dark:bg-slate-900/40">
+              {ADMIN_TABS.map(({ id, icon: Icon, label }) => {
+                const active = activeTab === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold tracking-tight transition cursor-pointer whitespace-nowrap shrink-0 border ${
+                      active
+                        ? 'bg-farm-600 border-farm-500 text-white shadow-sm'
+                        : 'bg-white dark:bg-[#1a2333] border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Scrollable Content Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+              {/* ─── TAB: GENERAL ─── */}
+              {activeTab === 'general' && (
+                <div className="space-y-6 animate-fade-in">
+                  
+                  {/* Theme Presets */}
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <Sun size={14} /> Active Theme Presets
+                    </h4>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => onToggleDark(false)}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          !isDark 
+                            ? 'bg-farm-600 border-farm-500 text-white' 
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        Light Mode
+                      </button>
+                      <button 
+                        onClick={() => onToggleDark(true)}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          isDark 
+                            ? 'bg-farm-600 border-farm-500 text-white' 
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        Dark Mode
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Typography Settings */}
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <Type size={14} /> Typography Font Scaling
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {['sm', 'base', 'md', 'lg'].map(size => (
+                        <button 
+                          key={size}
+                          onClick={() => onTextSizeChange(size)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            textSize === size 
+                              ? 'bg-farm-600 border-farm-500 text-white' 
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          {size === 'sm' ? "Small" : size === 'base' ? "Normal" : size === 'md' ? "Medium" : "Large"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Account Password change Form */}
+                  <form onSubmit={handleChangePw} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <Lock size={14} /> Change Access Password
+                    </h4>
+                    {pwMsg && (
+                      <div className={`p-3 rounded-lg text-xs border ${
+                        pwMsg.type === 'ok' ? 'bg-farm-950/40 border-farm-500 text-farm-300' : 'bg-red-950/40 border-red-500 text-red-300'
+                      }`}>
+                        {pwMsg.text}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Current Password</label>
+                        <input 
+                          type="password"
+                          className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                          placeholder="••••••••"
+                          value={curPw}
+                          onChange={e => setCurPw(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">New Password</label>
+                        <input 
+                          type="password"
+                          className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                          placeholder="Min 4 characters"
+                          value={newPw}
+                          onChange={e => setNewPw(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <button 
+                      type="submit"
+                      className="px-4 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer"
+                      disabled={submitting}
+                    >
+                      {submitting ? <Loader size={14} className="animate-spin" /> : <Lock size={14} />} Update Password
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* ─── TAB: USERS ─── */}
+              {activeTab === 'users' && (
+                <div className="space-y-6 animate-fade-in">
+                  {isAdmin ? (
+                    <>
+                      {/* Register Worker Account */}
+                      <form onSubmit={handleAddWorker} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
+                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                          <UserPlus size={14} /> Register New Worker Account
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Username</label>
+                            <input 
+                              required
+                              className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                              placeholder="e.g. johan"
+                              value={workerForm.username}
+                              onChange={e => setWorkerForm({...workerForm, username: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Email</label>
+                            <input 
+                              required
+                              type="email"
+                              className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                              placeholder="worker@farm.com"
+                              value={workerForm.email}
+                              onChange={e => setWorkerForm({...workerForm, email: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Password</label>
+                            <input 
+                              required
+                              type="password"
+                              className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                              placeholder="Min 4 letters"
+                              value={workerForm.password}
+                              onChange={e => setWorkerForm({...workerForm, password: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Role Access Level</label>
+                          <select 
+                            className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white font-medium cursor-pointer"
+                            value={workerForm.role}
+                            onChange={e => setWorkerForm({...workerForm, role: e.target.value})}
+                          >
+                            <option value="worker">Worker (Standard Access)</option>
+                            <option value="admin">Administrator (Full Access)</option>
+                          </select>
+                        </div>
+
+                        <button 
+                          type="submit"
+                          className="px-4 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer"
+                          disabled={submitting}
+                        >
+                          {submitting ? <Loader size={14} className="animate-spin" /> : <UserPlus size={14} />} Register Worker
+                        </button>
+                      </form>
+
+                      {/* Worker registries listing */}
+                      <div className="space-y-3">
+                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Registered Operatives ({users.length})</p>
+                        <div className="divide-y divide-slate-200 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-900/10 dark:bg-[#151d30]/20">
+                          {users.map(u => (
+                            <div key={u._id} className="flex justify-between items-center p-4">
+                              <div>
+                                <p className="text-sm font-bold text-slate-800 dark:text-white">{u.username} <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 ml-2">{u.role}</span></p>
+                                <p className="text-xs text-slate-500">{u.email}</p>
+                              </div>
+                              {u.username !== 'admin' && (
+                                <button 
+                                  onClick={() => handleDeleteUser(u._id)} 
+                                  className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+                                  disabled={actionId === u._id}
+                                >
+                                  {actionId === u._id ? <Loader size={14} className="animate-spin" /> : <Trash2 size={15} />}
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-6 text-slate-500 flex items-center gap-3">
+                      <ShieldCheck size={20} />
+                      <p className="text-xs font-medium">Worker account access level detected. Worker registry management panel is restricted to Administrators.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ─── TAB: BACKUP ─── */}
+              {activeTab === 'backup' && (
+                <div className="space-y-6 animate-fade-in">
+                  {isAdmin ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Export Backup File */}
+                      <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
+                        <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">Database Backup Export</h5>
+                        <p className="text-xs text-slate-500 leading-relaxed">Download a single-file atomic JSON backup containing all crops, financial logs, duties rosters, and worker lists.</p>
+                        <button onClick={handleExportBackup} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer">
+                          <Database size={14} /> Download JSON Backup
+                        </button>
+                      </div>
+
+                      {/* Upload & Restore database */}
+                      <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
+                        <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">Database Recovery Restore</h5>
+                        <p className="text-xs text-slate-500 leading-relaxed">Restore all databases atomically from a previously downloaded AgriFarm backup file. Warning: This clears all existing tables.</p>
+                        <label className="inline-flex items-center gap-2 px-4 py-2 bg-farm-900/30 hover:bg-farm-900/50 text-farm-500 dark:text-farm-300 border border-farm-200 dark:border-farm-800 hover:border-farm-700 text-xs font-bold rounded-lg cursor-pointer transition-all">
+                          <Database size={14} /> Upload & Restore Database
+                          <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-6 text-slate-500 flex items-center gap-3">
+                      <ShieldCheck size={20} />
+                      <p className="text-xs font-medium">Worker account access level detected. Database backup and restore center is restricted to Administrators.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}

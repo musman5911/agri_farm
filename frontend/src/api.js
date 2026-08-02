@@ -31,6 +31,9 @@ export const login = (email, password) => {
 
 export const getUsers = () => api.get('/users');
 export const deleteUser = (id) => api.delete(`/users/${id}`);
+export const changePassword = (currentPassword, newPassword) => {
+    return api.post('/change-password', { currentPassword, newPassword });
+};
 
 // --- CROPS ROUTES ---
 export const getCrops = () => api.get('/crops');

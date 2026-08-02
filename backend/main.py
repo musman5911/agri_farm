@@ -126,6 +126,22 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     })
     return {"access_token": token, "token_type": "bearer", "role": user.get("role", "worker")}
 
+@app.post("/change-password")
+async def change_password(payload: dict, current_user: dict = Depends(get_current_user)):
+    current_password = payload.get("currentPassword")
+    new_password = payload.get("newPassword")
+    if not current_password or not new_password:
+        raise HTTPException(status_code=400, detail="Current and new passwords are required")
+    if len(new_password) < 4:
+        raise HTTPException(status_code=400, detail="New password must be at least 4 characters")
+    
+    if not verify_password(current_password, current_user["password"]):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    
+    hashed_password = get_password_hash(new_password)
+    await users_col.update_one({"_id": current_user["_id"]}, {"$set": {"password": hashed_password}})
+    return {"status": "ok"}
+
 # --- USER MANAGEMENT ROUTES (ADMIN ONLY) ---
 @app.get("/users")
 async def get_users(current_user: dict = Depends(get_current_user)):

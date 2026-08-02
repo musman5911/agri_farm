@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as api from './api';
+import DetailModal from './components/DetailModal';
+import AdminMenu from './components/AdminMenu';
 import { 
   Sprout, 
   DollarSign, 
@@ -44,6 +46,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') !== 'light');
   const [textSize, setTextSize] = useState(localStorage.getItem('text_size') || 'base'); // sm, base, md, lg
+  const [modal, setModal] = useState(null);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   
   const [crops, setCrops] = useState([]);
   const [finance, setFinance] = useState([]);
@@ -447,7 +451,6 @@ function App() {
     { id: 'finance', label: 'Financial Ledger', icon: DollarSign },
     { id: 'tasks', label: 'Care & Health', icon: HeartPulse },
     { id: 'summary', label: 'Monthly Summary', icon: BarChart3 },
-    { id: 'settings', label: 'Settings & Admin', icon: Settings },
   ];
 
   // --- RENDER AUTHENTICATION ---
@@ -590,6 +593,19 @@ function App() {
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
             </button>
 
+            {/* Admin Menu popup toggle */}
+            <button 
+              onClick={() => setAdminMenuOpen(true)}
+              className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
+                isDark 
+                  ? 'border-slate-800 bg-slate-900 text-farm-400 hover:bg-slate-800 hover:text-farm-300' 
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-farm-600'
+              }`}
+              title="Settings & Admin"
+            >
+              <Settings size={15} />
+            </button>
+
             {/* Logout button */}
             <button 
               onClick={handleLogout}
@@ -666,9 +682,12 @@ function App() {
 
               {/* Status Grid Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
-                }`}>
+                <div 
+                  onClick={() => setModal('crops_planted')}
+                  className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
+                  }`}
+                >
                   <div>
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Crops Planted</p>
                     <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{crops.length}</p>
@@ -679,9 +698,12 @@ function App() {
                   </div>
                 </div>
 
-                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
-                }`}>
+                <div 
+                  onClick={() => setModal('ledger_profit')}
+                  className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
+                  }`}
+                >
                   <div>
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Operational Profit</p>
                     <p className={`font-black mt-1 ${titleClassMap[textSize]} ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
@@ -694,9 +716,12 @@ function App() {
                   </div>
                 </div>
 
-                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
-                }`}>
+                <div 
+                  onClick={() => setModal('pending_duties')}
+                  className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
+                  }`}
+                >
                   <div>
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Duties scheduled</p>
                     <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{tasks.filter(t => t.status === 'Pending').length}</p>
@@ -707,9 +732,12 @@ function App() {
                   </div>
                 </div>
 
-                <div className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
-                }`}>
+                <div 
+                  onClick={() => setModal('worker_operatives')}
+                  className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
+                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200 hover:shadow-md'
+                  }`}
+                >
                   <div>
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Authorized users</p>
                     <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{users.length || 1}</p>
@@ -1578,6 +1606,163 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* ─── ADMIN HUB POPUP MODAL ─── */}
+      <AdminMenu
+        open={adminMenuOpen}
+        onClose={() => setAdminMenuOpen(false)}
+        userRole={userRole}
+        username={username}
+        isDark={isDark}
+        onToggleDark={setIsDark}
+        textSize={textSize}
+        onTextSizeChange={handleTextSizeChange}
+        users={users}
+        refreshData={refreshData}
+        showAlert={showAlert}
+      />
+
+      {/* ─── DETAIL POPUPS (Dashboard Stat Card clicks) ─── */}
+      
+      {/* 1. Crops Planted Detail */}
+      <DetailModal
+        open={modal === 'crops_planted'}
+        onClose={() => setModal(null)}
+        title="Crop Inventory Sectors"
+        subtitle={`${crops.length} Planted Crops`}
+        icon={<Sprout size={16} />}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Below is a breakdown of all crop segments currently registerized inside the farm database:</p>
+          <div className="grid grid-cols-1 gap-3 max-h-[50vh] overflow-y-auto pr-1">
+            {crops.map(c => (
+              <div key={c._id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-extrabold text-slate-800 dark:text-white">{c.name}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-farm-900/20 text-farm-400 border border-farm-900/30 uppercase">{c.status}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
+                  <p>Variety: <span className="font-semibold text-slate-700 dark:text-slate-300">{c.variety || 'N/A'}</span></p>
+                  <p>Plot: <span className="font-semibold text-slate-700 dark:text-slate-300">{c.field || 'N/A'}</span></p>
+                  <p>Planted: <span className="font-semibold text-slate-700 dark:text-slate-300">{c.plant_date || 'N/A'}</span></p>
+                  <p>Yield: <span className="font-semibold text-slate-700 dark:text-slate-300">{c.yield_kg ? `${c.yield_kg.toLocaleString()} kg` : 'N/A'}</span></p>
+                </div>
+              </div>
+            ))}
+            {crops.length === 0 && <p className="text-center text-xs text-slate-500 py-6">No crop logs available.</p>}
+          </div>
+        </div>
+      </DetailModal>
+
+      {/* 2. Operational Profit Ledger Detail */}
+      <DetailModal
+        open={modal === 'ledger_profit'}
+        onClose={() => setModal(null)}
+        title="Operational Ledger Flow"
+        subtitle={`Net Profit: $${netProfit.toLocaleString()}`}
+        icon={<DollarSign size={16} />}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-center border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Revenue</p>
+              <h5 className="text-lg font-black text-farm-400">${totalIncome.toLocaleString()}</h5>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Expenditures</p>
+              <h5 className="text-lg font-black text-red-400">${totalExpense.toLocaleString()}</h5>
+            </div>
+          </div>
+          <div className="space-y-2.5 max-h-[40vh] overflow-y-auto pr-1">
+            {finance.slice(0, 15).map(f => (
+              <div key={f._id} className="flex justify-between items-center text-xs p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20">
+                <div>
+                  <p className="font-bold text-slate-800 dark:text-white">{f.category}</p>
+                  <p className="text-[10px] text-slate-400">{f.date}</p>
+                </div>
+                <span className={`font-extrabold ${f.type === 'expense' ? 'text-red-400' : 'text-farm-400'}`}>
+                  {f.type === 'expense' ? '-' : '+'}${f.amount.toLocaleString()}
+                </span>
+              </div>
+            ))}
+            {finance.length === 0 && <p className="text-center text-xs text-slate-500 py-6">No transaction logs available.</p>}
+          </div>
+        </div>
+      </DetailModal>
+
+      {/* 3. Pending Care Duties Detail */}
+      <DetailModal
+        open={modal === 'pending_duties'}
+        onClose={() => setModal(null)}
+        title="Active Care & Duties"
+        subtitle={`${tasks.filter(t => t.status === 'Pending').length} Pending Tasks`}
+        icon={<CheckSquare size={16} />}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Active tasks on the roster requiring operative action:</p>
+          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+            {tasks.filter(t => t.status === 'Pending').map(t => (
+              <div key={t._id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-extrabold text-slate-800 dark:text-white">{t.title}</span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-900/20 uppercase">{t.priority} Priority</span>
+                </div>
+                {t.notes && <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-2.5">{t.notes}</p>}
+                <div className="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-800/10 dark:border-slate-800/60 pt-2">
+                  <span>Operative: <strong className="text-slate-700 dark:text-slate-300">{t.assigned_to || 'General'}</strong></span>
+                  <span>Due: <strong className="text-slate-700 dark:text-slate-300">{t.due_date || 'N/A'}</strong></span>
+                </div>
+              </div>
+            ))}
+            {tasks.filter(t => t.status === 'Pending').length === 0 && (
+              <p className="text-center text-xs text-slate-500 py-6">All tasks completed! Duty roster is clean.</p>
+            )}
+          </div>
+        </div>
+      </DetailModal>
+
+      {/* 4. Registered Operatives Detail */}
+      <DetailModal
+        open={modal === 'worker_operatives'}
+        onClose={() => setModal(null)}
+        title="Authorized Operatives"
+        subtitle={`${users.length || 1} Farm Users`}
+        icon={<Users size={16} />}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">List of worker credentials currently granted access to AgriFarm systems:</p>
+          <div className="divide-y divide-slate-200 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/20">
+            {users.map(u => (
+              <div key={u._id} className="flex justify-between items-center p-4">
+                <div>
+                  <p className="text-xs md:text-sm font-bold text-slate-800 dark:text-white">
+                    {u.username} 
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 ml-2">{u.role}</span>
+                  </p>
+                  <p className="text-[11px] text-slate-500">{u.email}</p>
+                </div>
+                <span className="text-[10px] text-farm-500 font-bold uppercase tracking-widest flex items-center gap-1">
+                  <ShieldCheck size={14} /> Verified
+                </span>
+              </div>
+            ))}
+            {users.length === 0 && (
+              <div className="flex justify-between items-center p-4">
+                <div>
+                  <p className="text-xs md:text-sm font-bold text-slate-800 dark:text-white">
+                    admin 
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 ml-2">admin</span>
+                  </p>
+                  <p className="text-[11px] text-slate-500">admin@farm.com</p>
+                </div>
+                <span className="text-[10px] text-farm-500 font-bold uppercase tracking-widest flex items-center gap-1">
+                  <ShieldCheck size={14} /> Verified
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </DetailModal>
 
     </div>
   );
