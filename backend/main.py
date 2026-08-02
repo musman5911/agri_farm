@@ -26,6 +26,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def strip_api_prefix(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/"):
+        request.scope["path"] = path[4:]
+    elif path == "/api":
+        request.scope["path"] = "/"
+    response = await call_next(request)
+    return response
+
 # --- STARTUP EVENT — VERIFY DATABASE CONNECTION ---
 def is_time_to_run(schedule: str, last_run_ts: float, now: datetime) -> bool:
     """Evaluate if the scheduled time has arrived and hasn't already executed on the calendar day."""
@@ -818,3 +828,12 @@ async def restore_backup(payload: dict, current_user: dict = Depends(get_current
         await tasks_col.insert_many(tasks_data)
         
     return {"status": "ok"}
+
+# --- SERVE FRONTEND STATIC FILES IN PRODUCTION ---
+from fastapi.staticfiles import StaticFiles
+
+frontend_dist_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend/dist"))
+if os.path.exists(frontend_dist_path):
+    app.mount("/", StaticFiles(directory=frontend_dist_path, html=True), name="frontend")
+else:
+    print(f"⚠️ [Startup] Warning: Frontend build dist folder was not found at {frontend_dist_path}. Please compile with 'npm run build' in frontend/.")
