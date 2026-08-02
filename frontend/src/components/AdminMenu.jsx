@@ -650,6 +650,11 @@ export default function AdminMenu({
     reader.readAsText(file);
   };
 
+  const filteredTabs = ADMIN_TABS.filter(tab => {
+    if (!isAdmin && tab.id !== 'general') return false;
+    return true;
+  });
+
   return (
     <AnimatePresence>
       {open && (
@@ -675,11 +680,15 @@ export default function AdminMenu({
             <div className="flex items-start justify-between p-5 border-b border-slate-200 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-farm-900/20 text-farm-500 dark:text-farm-400 rounded-xl">
-                  <Settings size={20} />
+                  {isAdmin ? <Settings size={20} /> : <Users size={20} />}
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-800 dark:text-white">Settings & Admin Hub</h3>
-                  <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">Control Panel</p>
+                  <h3 className="text-base font-black text-slate-800 dark:text-white">
+                    {isAdmin ? "Settings & Admin Hub" : "Worker Operations Hub"}
+                  </h3>
+                  <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                    {isAdmin ? "Control Panel" : "Standard Access Portal"}
+                  </p>
                 </div>
               </div>
               <button 
@@ -692,7 +701,7 @@ export default function AdminMenu({
 
             {/* Inner Tabs Navigation */}
             <div className="flex items-center gap-1.5 overflow-x-auto border-b border-slate-200 dark:border-slate-800 px-5 py-2.5 shrink-0 select-none custom-scrollbar bg-slate-50 dark:bg-slate-900/40">
-              {ADMIN_TABS.map(({ id, icon: Icon, label }) => {
+              {filteredTabs.map(({ id, icon: Icon, label }) => {
                 const active = activeTab === id;
                 return (
                   <button
