@@ -1,16 +1,30 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 
 class User(BaseModel):
     username: str
-    email: Optional[str] = ""
+    email: Optional[EmailStr] = None
     role: str = "worker"
     password: str
 
+    @field_validator('email', mode='before')
+    @classmethod
+    def check_empty_email(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
+
 class UserOut(BaseModel):
     username: str
-    email: Optional[str] = ""
+    email: Optional[EmailStr] = None
     role: str
+
+    @field_validator('email', mode='before')
+    @classmethod
+    def check_empty_email(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
 
 class Token(BaseModel):
     access_token: str

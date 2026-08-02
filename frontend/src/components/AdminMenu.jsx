@@ -175,15 +175,23 @@ export default function AdminMenu({
   const handleChangePw = async (e) => {
     e.preventDefault();
     setPwMsg(null);
-    if (!curPw || !newPw) {
-      return setPwMsg({ type: 'err', text: 'Please fill out both fields.' });
+    if (!newPw) {
+      return setPwMsg({ type: 'err', text: 'New password is required.' });
     }
-    if (newPw.length < 4) {
-      return setPwMsg({ type: 'err', text: 'New password must be at least 4 characters.' });
+    if (newPw.length < 6) {
+      return setPwMsg({ type: 'err', text: 'New password must be at least 6 characters.' });
     }
-    if (!pwCode) {
-      return setPwMsg({ type: 'err', text: 'Verification code is mandatory. Please request a code and input it.' });
+    
+    if (pwVerifyMethod === 'password') {
+      if (!curPw) {
+        return setPwMsg({ type: 'err', text: 'Current password is required.' });
+      }
+    } else {
+      if (!pwCode) {
+        return setPwMsg({ type: 'err', text: 'Verification code is required. Please request and input your code.' });
+      }
     }
+    
     setSubmitting(true);
     try {
       await api.changePassword(curPw, newPw, pwCode);
@@ -882,7 +890,7 @@ export default function AdminMenu({
                                 required
                                 type="password"
                                 className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
-                                placeholder="Min 4 characters"
+                                placeholder="Min 6 characters"
                                 value={newPw}
                                 onChange={e => setNewPw(e.target.value)}
                               />
@@ -896,7 +904,7 @@ export default function AdminMenu({
                                 required
                                 type="password"
                                 className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
-                                placeholder="Min 4 characters"
+                                placeholder="Min 6 characters"
                                 value={newPw}
                                 onChange={e => setNewPw(e.target.value)}
                               />
@@ -974,7 +982,7 @@ export default function AdminMenu({
                               required
                               type="password"
                               className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
-                              placeholder="Min 4 characters"
+                              placeholder="Min 6 characters"
                               value={workerForm.password}
                               onChange={e => setWorkerForm({...workerForm, password: e.target.value})}
                             />

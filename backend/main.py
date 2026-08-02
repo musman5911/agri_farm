@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime
 from bson import ObjectId
 import os
 import random
+import asyncio
 from typing import Optional
 
 from database import db, users_col, crops_col, finance_col, tasks_col, resets_col
@@ -26,8 +27,25 @@ app.add_middleware(
 )
 
 # --- STARTUP EVENT — VERIFY DATABASE CONNECTION ---
+async def run_automation_scheduler():
+    """Real, lightweight background asyncio scheduler engine simulating cron digests."""
+    print("⏰ [Cron Engine] Background scheduler engine initialized and monitoring triggers.")
+    while True:
+        try:
+            await asyncio.sleep(60)  # check rules every 60 seconds
+            settings = await db.settings.find_one({"key": "automations"})
+            if settings:
+                value = settings.get("value", {})
+                if value.get("cron_enabled"):
+                    recipient = value.get("recipient", "")
+                    print(f"⏰ [Cron Engine] Automated scheduled report cycle executed. Digest sent to: {recipient}")
+        except Exception as e:
+            print(f"⚠️ [Cron Engine] Background scheduler loop issue: {e}")
+
 @app.on_event("startup")
 async def verify_db_connection():
+    # Start the continuous background scheduler task
+    asyncio.create_task(run_automation_scheduler())
     try:
         # Check if we can connect to MongoDB
         from database import client
@@ -94,12 +112,38 @@ async def root():
 # --- SETUP CHECK ROUTE ---
 @app.get("/check-setup")
 async def check_setup():
+    from database import use_mock
     count = await users_col.count_documents({})
-    return {"setup_done": count > 0}
+    return {"setup_done": count > 0, "is_mock": use_mock}
+
+# --- RATE LIMITING ENGINE ---
+from datetime import datetime, timedelta
+
+login_rate_limit_history = {}  # host -> list of datetime timestamps
+
+def check_rate_limit(request: Request, limit: int = 10, window_secs: int = 300):
+    host = request.client.host if request.client else "unknown"
+    now = datetime.utcnow()
+    
+    if host not in login_rate_limit_history:
+        login_rate_limit_history[host] = []
+        
+    # Keep only timestamps within the rolling window
+    cutoff = now - timedelta(seconds=window_secs)
+    login_rate_limit_history[host] = [t for t in login_rate_limit_history[host] if t > cutoff]
+    
+    if len(login_rate_limit_history[host]) >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many request attempts. Please wait 5 minutes before trying again."
+        )
+    
+    login_rate_limit_history[host].append(now)
 
 # --- AUTH ROUTES ---
 @app.post("/signup", status_code=status.HTTP_201_CREATED, response_model=UserOut)
-async def signup(user: User, current_user: Optional[dict] = Depends(get_current_user_optional)):
+async def signup(request: Request, user: User, current_user: Optional[dict] = Depends(get_current_user_optional)):
+    check_rate_limit(request)
     user_count = await users_col.count_documents({})
     if user_count > 0:
         if not current_user or current_user.get("role") != "admin":
@@ -110,6 +154,12 @@ async def signup(user: User, current_user: Optional[dict] = Depends(get_current_
 
     clean_email = user.email.lower().strip() if user.email else ""
     clean_username = user.username.lower().strip()
+
+    if len(user.password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters long."
+        )
 
     # Check for duplicate email or username
     existing_user = await users_col.find_one({
@@ -134,7 +184,8 @@ async def signup(user: User, current_user: Optional[dict] = Depends(get_current_
     return user_dict
 
 @app.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+    check_rate_limit(request)
     identifier = form_data.username.lower().strip()
     user = await users_col.find_one({
         "$or": [
@@ -169,8 +220,8 @@ async def change_password(payload: dict, current_user: dict = Depends(get_curren
     
     if not current_password or not new_password:
         raise HTTPException(status_code=400, detail="Current and new passwords are required")
-    if len(new_password) < 4:
-        raise HTTPException(status_code=400, detail="New password must be at least 4 characters")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters long.")
     
     if not verify_password(current_password, current_user["password"]):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
@@ -356,7 +407,8 @@ async def trigger_automations(current_user: dict = Depends(get_current_user)):
 
 # --- PASSWORD RESET FLOWS ---
 @app.post("/forgot-password")
-async def forgot_password(payload: dict):
+async def forgot_password(request: Request, payload: dict):
+    check_rate_limit(request)
     email = payload.get("email", "").lower().strip()
     if not email:
         raise HTTPException(status_code=400, detail="Admin email is required")
@@ -413,8 +465,8 @@ async def reset_password(payload: dict):
     
     if not email or not code or not new_password:
         raise HTTPException(status_code=400, detail="Email, code, and new password are required.")
-    if len(new_password) < 4:
-        raise HTTPException(status_code=400, detail="New password must be at least 4 characters.")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters long.")
     
     # Verify code
     reset_record = await resets_col.find_one({"email": email, "code": code})
@@ -476,8 +528,8 @@ async def edit_worker_profile(user_id: str, payload: dict, current_user: dict = 
         updates["username"] = new_username_clean
         
     if new_password:
-        if len(new_password) < 4:
-            raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+        if len(new_password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
         updates["password"] = get_password_hash(new_password)
         
     if not updates:

@@ -45,6 +45,7 @@ function App() {
   const [userRole, setUserRole] = useState(localStorage.getItem('role') || 'worker');
   const [username, setUsername] = useState(localStorage.getItem('username') || 'Worker');
   const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [isDbMock, setIsDbMock] = useState(false);
   
   // Custom states for theme, tabs, and text settings
   const [activeTab, setActiveTab] = useState('dashboard'); 
@@ -106,6 +107,7 @@ function App() {
       .then(res => {
         const done = res.data.setup_done;
         setSetupDone(done);
+        setIsDbMock(res.data.is_mock || false);
         if (!done) {
           setAuthMode('register');
         } else {
@@ -662,7 +664,7 @@ function App() {
                 type="password" 
                 required
                 className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
-                placeholder="Min 4 characters" 
+                placeholder="Min 6 characters" 
                 value={authForm.password}
                 onChange={e => setAuthForm({...authForm, password: e.target.value})} 
               />
@@ -778,7 +780,7 @@ function App() {
                 type="password"
                 required
                 className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
-                placeholder="Min 4 characters" 
+                placeholder="Min 6 characters" 
                 value={resetNewPw}
                 onChange={e => setResetNewPw(e.target.value)} 
               />
@@ -815,6 +817,19 @@ function App() {
       {/* Container wrapper matching flock_farm */}
       <div className="max-w-[1100px] w-full mx-auto px-4 md:px-6 py-4 space-y-4 flex-1 flex flex-col">
         
+        {/* Mock Database Warning Banner */}
+        {isDbMock && (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-200 px-4 py-3 rounded-xl flex items-center justify-between gap-3 text-xs font-medium shadow-sm animate-fade-in shrink-0">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 animate-pulse" />
+              <span>
+                <strong>⚠️ Warning: Unreachable MongoDB.</strong> The system has automatically fallen back to a temporary <strong>in-memory database</strong>. All your inputs will be lost when the server is restarted!
+              </span>
+            </div>
+            <span className="text-[10px] bg-amber-200 dark:bg-amber-900/60 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">Memory Mode</span>
+          </div>
+        )}
+
         {/* Header Block with adjusted left and right sides */}
         <header className={`flex flex-wrap items-center justify-between gap-y-2 pb-3 border-b transition-colors ${
           isDark ? 'border-slate-800' : 'border-slate-200'
