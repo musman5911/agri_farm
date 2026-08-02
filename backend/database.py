@@ -17,3 +17,4 @@ users_col = db.users
 crops_col = db.crops
 finance_col = db.finance
 tasks_col = db.tasks
+resets_col = db.resets

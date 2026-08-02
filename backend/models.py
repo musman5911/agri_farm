@@ -3,13 +3,13 @@ from typing import Optional
 
 class User(BaseModel):
     username: str
-    email: str
+    email: Optional[str] = ""
     role: str = "worker"
     password: str
 
 class UserOut(BaseModel):
     username: str
-    email: str
+    email: Optional[str] = ""
     role: str
 
 class Token(BaseModel):

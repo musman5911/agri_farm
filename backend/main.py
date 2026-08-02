@@ -4,10 +4,13 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime
 from bson import ObjectId
 import os
+import random
+from typing import Optional
 
-from database import users_col, crops_col, finance_col, tasks_col
+from database import users_col, crops_col, finance_col, tasks_col, resets_col
 from models import User, UserOut, Crop, FinanceEntry, Task
 from auth import verify_password, get_password_hash, create_access_token, decode_access_token
+from mailer import send_email
 
 app = FastAPI(title="AgriFarm Management API", version="1.0.0")
 
@@ -54,14 +57,19 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     payload = decode_access_token(token)
-    email = payload.get("sub")
-    if not email:
+    sub = payload.get("sub")
+    if not sub:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = await users_col.find_one({"email": email})
+    user = await users_col.find_one({
+        "$or": [
+            {"email": sub},
+            {"username": sub}
+        ]
+    })
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -69,21 +77,52 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         )
     return user
 
+async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme)):
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        sub = payload.get("sub")
+        if sub:
+            return await users_col.find_one({
+                "$or": [
+                    {"email": sub},
+                    {"username": sub}
+                ]
+            })
+    except Exception:
+        return None
+    return None
+
 # --- HEALTH CHECK ROUTE ---
 @app.get("/")
 async def root():
     return {"message": "Welcome to AgriFarm Management API!"}
 
+# --- SETUP CHECK ROUTE ---
+@app.get("/check-setup")
+async def check_setup():
+    count = await users_col.count_documents({})
+    return {"setup_done": count > 0}
+
 # --- AUTH ROUTES ---
 @app.post("/signup", status_code=status.HTTP_201_CREATED, response_model=UserOut)
-async def signup(user: User):
-    clean_email = user.email.lower().strip()
+async def signup(user: User, current_user: Optional[dict] = Depends(get_current_user_optional)):
+    user_count = await users_col.count_documents({})
+    if user_count > 0:
+        if not current_user or current_user.get("role") != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Registration is restricted to Administrators only."
+            )
+
+    clean_email = user.email.lower().strip() if user.email else ""
     clean_username = user.username.lower().strip()
 
     # Check for duplicate email or username
     existing_user = await users_col.find_one({
         "$or": [
-            {"email": clean_email},
+            {"email": clean_email} if clean_email else {"email": "NON_EXISTENT_DUMMY_VALUE_99"},
             {"username": clean_username}
         ]
     })
@@ -120,7 +159,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         )
     
     token = create_access_token({
-        "sub": user["email"],
+        "sub": user["email"] if user.get("email") else user["username"],
         "role": user.get("role", "worker"),
         "username": user["username"]
     })
@@ -128,6 +167,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @app.post("/change-password")
 async def change_password(payload: dict, current_user: dict = Depends(get_current_user)):
+    # Workers cannot change password, only Admin!
+    if current_user.get("role") != "admin":
+         raise HTTPException(status_code=403, detail="Password updates are restricted to Administrators only.")
+         
     current_password = payload.get("currentPassword")
     new_password = payload.get("newPassword")
     if not current_password or not new_password:
@@ -142,6 +185,71 @@ async def change_password(payload: dict, current_user: dict = Depends(get_curren
     await users_col.update_one({"_id": current_user["_id"]}, {"$set": {"password": hashed_password}})
     return {"status": "ok"}
 
+# --- PASSWORD RESET FLOWS ---
+@app.post("/forgot-password")
+async def forgot_password(payload: dict):
+    email = payload.get("email", "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Admin email is required")
+    
+    # Verify if admin with email exists
+    admin = await users_col.find_one({"email": email, "role": "admin"})
+    if not admin:
+        raise HTTPException(status_code=404, detail="No administrator account with this email was found.")
+    
+    # Generate 6-digit code
+    code = str(random.randint(100000, 999999))
+    expiry = datetime.utcnow().timestamp() + 600 # 10 minutes
+    
+    await resets_col.delete_many({"email": email}) # clear previous
+    await resets_col.insert_one({
+        "email": email,
+        "code": code,
+        "expiry": expiry
+    })
+    
+    # Send email
+    subject = "AgriFarm Command Center — Verification Reset Code"
+    html_content = f"""
+    <div style="font-family: sans-serif; padding: 25px; background-color: #0b0f19; color: #f1f5f9; border-radius: 12px; max-width: 500px; margin: 0 auto; border: 1px solid #1e293b;">
+        <h2 style="color: #22c55e; border-bottom: 1px solid #1e293b; padding-bottom: 10px; margin-top: 0;">AgriFarm Password Recovery</h2>
+        <p style="font-size: 14px; line-height: 1.5; color: #94a3b8;">You requested an administrative password reset code. Use the verification code below to authorize your reset:</p>
+        <div style="background-color: #1e293b; padding: 15px; border-radius: 8px; font-size: 26px; font-weight: bold; text-align: center; color: #22c55e; letter-spacing: 4px; margin: 20px 0; border: 1px solid #334155;">
+            {code}
+        </div>
+        <p style="font-size: 11px; color: #64748b;">This code is strictly active for 10 minutes. If you did not authorize this action, secure your account immediately.</p>
+    </div>
+    """
+    await send_email(email, subject, html_content)
+    return {"status": "ok", "message": "Verification code has been successfully emailed!"}
+
+@app.post("/reset-password")
+async def reset_password(payload: dict):
+    email = payload.get("email", "").lower().strip()
+    code = payload.get("code", "").strip()
+    new_password = payload.get("newPassword")
+    
+    if not email or not code or not new_password:
+        raise HTTPException(status_code=400, detail="Email, code, and new password are required.")
+    if len(new_password) < 4:
+        raise HTTPException(status_code=400, detail="New password must be at least 4 characters.")
+    
+    # Verify code
+    reset_record = await resets_col.find_one({"email": email, "code": code})
+    if not reset_record:
+        raise HTTPException(status_code=400, detail="Invalid verification code.")
+    
+    # Check expiry
+    if datetime.utcnow().timestamp() > reset_record["expiry"]:
+        await resets_col.delete_one({"_id": reset_record["_id"]})
+        raise HTTPException(status_code=400, detail="Verification code has expired.")
+        
+    # Reset password
+    hashed_password = get_password_hash(new_password)
+    await users_col.update_one({"email": email, "role": "admin"}, {"$set": {"password": hashed_password}})
+    await resets_col.delete_one({"_id": reset_record["_id"]})
+    return {"status": "ok"}
+
 # --- USER MANAGEMENT ROUTES (ADMIN ONLY) ---
 @app.get("/users")
 async def get_users(current_user: dict = Depends(get_current_user)):
@@ -153,6 +261,24 @@ async def get_users(current_user: dict = Depends(get_current_user)):
         if "password" in u:
             del u["password"]
     return users
+
+@app.patch("/users/{user_id}/password")
+async def change_worker_password(user_id: str, payload: dict, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin authorization required")
+    new_pw = payload.get("newPassword")
+    if not new_pw or len(new_pw) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+    try:
+        obj_id = ObjectId(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+        
+    hashed_password = get_password_hash(new_pw)
+    result = await users_col.update_one({"_id": obj_id}, {"$set": {"password": hashed_password}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "ok"}
 
 @app.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):

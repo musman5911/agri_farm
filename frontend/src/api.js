@@ -34,6 +34,14 @@ export const deleteUser = (id) => api.delete(`/users/${id}`);
 export const changePassword = (currentPassword, newPassword) => {
     return api.post('/change-password', { currentPassword, newPassword });
 };
+export const changeWorkerPassword = (id, newPassword) => {
+    return api.patch(`/users/${id}/password`, { newPassword });
+};
+export const checkSetup = () => api.get('/check-setup');
+export const forgotPassword = (email) => api.post('/forgot-password', { email });
+export const resetPassword = (email, code, newPassword) => {
+    return api.post('/reset-password', { email, code, newPassword });
+};
 
 // --- CROPS ROUTES ---
 export const getCrops = () => api.get('/crops');

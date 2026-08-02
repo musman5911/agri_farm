@@ -34,7 +34,10 @@ import {
   Moon,
   BarChart3,
   HeartPulse,
-  Type
+  Type,
+  Lock,
+  Mail,
+  Key
 } from 'lucide-react';
 
 function App() {
@@ -48,6 +51,13 @@ function App() {
   const [textSize, setTextSize] = useState(localStorage.getItem('text_size') || 'base'); // sm, base, md, lg
   const [modal, setModal] = useState(null);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+
+  // Authentication & Password Recovery States
+  const [setupDone, setSetupDone] = useState(true);
+  const [authMode, setAuthMode] = useState('login'); // 'login', 'register', 'forgot_send', 'forgot_reset'
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [resetNewPw, setResetNewPw] = useState('');
   
   const [crops, setCrops] = useState([]);
   const [finance, setFinance] = useState([]);
@@ -69,13 +79,12 @@ function App() {
   const [editingTask, setEditingTask] = useState(null);
 
   // Form states
-  const [authForm, setAuthForm] = useState({ username: '', email: '', password: '', role: 'worker' });
-  const [isRegister, setIsRegister] = useState(false);
+  const [authForm, setAuthForm] = useState({ username: '', email: '', password: '' });
   
   const [cropForm, setCropForm] = useState({ name: '', variety: '', status: 'Growing', plant_date: '', harvest_date: '', field: '', yield_kg: '', notes: '' });
   const [finForm, setFinForm] = useState({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' });
   const [taskForm, setTaskForm] = useState({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' });
-  const [newWorkerForm, setNewWorkerForm] = useState({ username: '', email: '', password: '', role: 'worker' });
+  const [newWorkerForm, setNewWorkerForm] = useState({ username: '', password: '', role: 'worker' });
 
   // Filter States
   const [cropFilter, setCropFilter] = useState('all');
@@ -89,6 +98,24 @@ function App() {
     setAlertMsg({ text, isError });
     setTimeout(() => setAlertMsg({ text: '', isError: false }), 4000);
   };
+
+  // Sync setup state on launch
+  useEffect(() => {
+    api.checkSetup()
+      .then(res => {
+        const done = res.data.setup_done;
+        setSetupDone(done);
+        if (!done) {
+          setAuthMode('register');
+        } else {
+          setAuthMode('login');
+        }
+      })
+      .catch(() => {
+        setSetupDone(true);
+        setAuthMode('login');
+      });
+  }, [token]);
 
   // Sync isDark with document element & body
   useEffect(() => {
@@ -149,23 +176,35 @@ function App() {
     window.location.reload();
   };
 
+  // --- Login / Signup Actions ---
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    if (!authForm.email || !authForm.password || (isRegister && !authForm.username)) {
-      return showAlert("Please fill in all required fields.", true);
+    if (authMode === 'register') {
+      if (!authForm.username || !authForm.email || !authForm.password) {
+        return showAlert("Please complete all initial signup fields.", true);
+      }
+    } else {
+      if (!authForm.username || !authForm.password) {
+        return showAlert("Please enter your login credentials.", true);
+      }
     }
+
     setLoading(true);
     try {
-      if (isRegister) {
-        await api.signup(authForm.username, authForm.email, authForm.password, authForm.role);
-        showAlert("Account created successfully! Please log in.");
-        setIsRegister(false);
+      if (authMode === 'register') {
+        // Initial setup signup: first user created is always an administrator!
+        await api.signup(authForm.username, authForm.email, authForm.password, 'admin');
+        showAlert("Administrator registered successfully! Please log in.");
+        setAuthForm({ username: '', email: '', password: '' });
+        setAuthMode('login');
+        setSetupDone(true);
       } else {
-        const res = await api.login(authForm.email, authForm.password);
+        // Login: accepts email or username
+        const res = await api.login(authForm.username, authForm.password);
         localStorage.setItem('token', res.data.access_token);
         localStorage.setItem('role', res.data.role);
         
-        const cleanName = authForm.email.split('@')[0];
+        const cleanName = res.data.username || authForm.username.split('@')[0];
         localStorage.setItem('username', cleanName);
 
         setToken(res.data.access_token);
@@ -174,7 +213,44 @@ function App() {
         showAlert("Welcome back to AgriFarm Command!");
       }
     } catch (err) {
-      showAlert(err.response?.data?.detail || "Authentication failed. Make sure your database is connected.", true);
+      const errMsg = err.response?.data?.detail || "Authentication failed. Please verify credentials.";
+      showAlert(errMsg, true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Password Recovery (Admin Only) ---
+  const handleForgotSendCode = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return showAlert("Administrator email is required.", true);
+    setLoading(true);
+    try {
+      await api.forgotPassword(forgotEmail);
+      showAlert("Verification code emailed to you successfully!");
+      setAuthMode('forgot_reset');
+    } catch (err) {
+      showAlert(err.response?.data?.detail || "Failed to trigger email code.", true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotResetPw = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail || !resetCode || !resetNewPw) {
+      return showAlert("Please complete all fields.", true);
+    }
+    setLoading(true);
+    try {
+      await api.resetPassword(forgotEmail, resetCode, resetNewPw);
+      showAlert("Password successfully reset! Please log in.");
+      setForgotEmail('');
+      setResetCode('');
+      setResetNewPw('');
+      setAuthMode('login');
+    } catch (err) {
+      showAlert(err.response?.data?.detail || "Reset verification failed.", true);
     } finally {
       setLoading(false);
     }
@@ -183,13 +259,14 @@ function App() {
   // --- Worker Management (Admin Only) ---
   const handleAddWorker = async (e) => {
     e.preventDefault();
-    if (!newWorkerForm.username || !newWorkerForm.email || !newWorkerForm.password) {
+    if (!newWorkerForm.username || !newWorkerForm.password) {
       return showAlert("Please complete all worker fields.", true);
     }
     try {
-      await api.signup(newWorkerForm.username, newWorkerForm.email, newWorkerForm.password, newWorkerForm.role);
+      // Workers do not use email! Email is passed as empty string.
+      await api.signup(newWorkerForm.username, "", newWorkerForm.password, "worker");
       showAlert(`Worker account '${newWorkerForm.username}' registered!`);
-      setNewWorkerForm({ username: '', email: '', password: '', role: 'worker' });
+      setNewWorkerForm({ username: '', password: '', role: 'worker' });
       refreshData();
     } catch (err) {
       showAlert(err.response?.data?.detail || "Failed to add worker account.", true);
@@ -453,9 +530,9 @@ function App() {
     { id: 'summary', label: 'Monthly Summary', icon: BarChart3 },
   ];
 
-  // --- RENDER AUTHENTICATION ---
+  // --- RENDER AUTHENTICATION & LOGIN ---
   if (!token) return (
-    <div className="min-h-screen bg-[#070b13] dark:bg-[#070b13] light:bg-slate-50 flex flex-col justify-center items-center px-4 transition-colors">
+    <div className="min-h-screen bg-[#070b13] dark:bg-[#070b13] bg-slate-50 flex flex-col justify-center items-center px-4 transition-colors">
       {alertMsg.text && (
         <div className={`mb-6 p-4 rounded-xl shadow-lg border text-sm max-w-sm w-full animate-fade-in ${
           alertMsg.isError ? 'bg-red-950/80 border-red-500 text-red-200' : 'bg-farm-950/80 border-farm-500 text-farm-200'
@@ -467,86 +544,250 @@ function App() {
         </div>
       )}
       
-      <div className="bg-[#0f172a] dark:bg-[#0f172a] light:bg-white border border-slate-800 dark:border-slate-800 light:border-slate-200 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover">
-        <div className="flex justify-center mb-4">
-          <div className="bg-farm-900/40 p-4 rounded-full border border-farm-500/20 text-farm-400">
-            <Sprout size={36} className="animate-bounce-soft" />
+      {/* ─── PANE 1: DEFAULT LOGIN SCREEN ─── */}
+      {authMode === 'login' && (
+        <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover">
+          <div className="flex justify-center mb-4">
+            <div className="bg-farm-900/20 text-farm-400 p-4 rounded-full border border-farm-500/20">
+              <Sprout size={36} className="animate-bounce-soft" />
+            </div>
           </div>
-        </div>
-        <h2 className="text-center text-farm-500 text-2xl font-extrabold tracking-tight mb-1">
-          AgriFarm Command Hub
-        </h2>
-        <p className="text-center text-slate-500 text-xs mb-8 uppercase tracking-widest font-semibold">
-          {isRegister ? "Register a new operative" : "Secure Sign-In Interface"}
-        </p>
-        
-        <form onSubmit={handleAuthSubmit} className="space-y-4">
-          {isRegister && (
+          <h2 className="text-center text-farm-500 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+            AgriFarm Command Hub
+          </h2>
+          <p className="text-center text-slate-500 dark:text-slate-400 text-xs mb-8 uppercase tracking-widest font-semibold">
+            Secure Sign-In Interface
+          </p>
+          
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Username</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Username or Email</label>
               <input 
                 type="text"
-                className="w-full bg-[#1e293b] dark:bg-[#1e293b] light:bg-slate-50 border border-slate-700 dark:border-slate-700 light:border-slate-300 rounded-lg px-4 py-3 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
-                placeholder="e.g. musman" 
+                required
+                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                placeholder="operative_id" 
                 value={authForm.username}
                 onChange={e => setAuthForm({...authForm, username: e.target.value})} 
               />
             </div>
-          )}
-          
-          <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Email Address</label>
-            <input 
-              type="email"
-              className="w-full bg-[#1e293b] dark:bg-[#1e293b] light:bg-slate-50 border border-slate-700 dark:border-slate-700 light:border-slate-300 rounded-lg px-4 py-3 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
-              placeholder="worker@farm.com" 
-              value={authForm.email}
-              onChange={e => setAuthForm({...authForm, email: e.target.value})} 
-            />
-          </div>
-          
-          <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Access Password</label>
-            <input 
-              type="password" 
-              className="w-full bg-[#1e293b] dark:bg-[#1e293b] light:bg-slate-50 border border-slate-700 dark:border-slate-700 light:border-slate-300 rounded-lg px-4 py-3 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-farm-500 transition-colors"
-              placeholder="••••••••" 
-              value={authForm.password}
-              onChange={e => setAuthForm({...authForm, password: e.target.value})} 
-            />
-          </div>
-
-          {isRegister && (
+            
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Access Level (Role)</label>
-              <select 
-                className="w-full bg-[#1e293b] dark:bg-[#1e293b] light:bg-slate-50 border border-slate-700 dark:border-slate-700 light:border-slate-300 rounded-lg px-4 py-3 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-farm-500 transition-colors font-medium"
-                value={authForm.role}
-                onChange={e => setAuthForm({...authForm, role: e.target.value})}
-              >
-                <option value="worker">Worker (Standard Access)</option>
-                <option value="admin">Administrator (Command Access)</option>
-              </select>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Access Password</label>
+                <button 
+                  type="button" 
+                  onClick={() => setAuthMode('forgot_send')}
+                  className="text-[11px] text-farm-600 hover:text-farm-500 font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+              <input 
+                type="password" 
+                required
+                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                placeholder="••••••••" 
+                value={authForm.password}
+                onChange={e => setAuthForm({...authForm, password: e.target.value})} 
+              />
             </div>
-          )}
+            
+            <button 
+              type="submit" 
+              className="w-full py-3 bg-farm-600 hover:bg-farm-700 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-farm-500/10 flex items-center justify-center gap-2 cursor-pointer mt-2"
+              disabled={loading}
+            >
+              {loading ? <Loader size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+              Access Console
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ─── PANE 2: FIRST-TIME SETUP REGISTRATION (ADMIN CREATION) ─── */}
+      {authMode === 'register' && (
+        <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover animate-fade-in">
+          <div className="flex justify-center mb-4">
+            <div className="bg-farm-900/20 text-farm-400 p-4 rounded-full border border-farm-500/20">
+              <Sprout size={36} className="animate-bounce-soft" />
+            </div>
+          </div>
+          <h2 className="text-center text-farm-500 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+            Initialize AgriFarm
+          </h2>
+          <p className="text-center text-slate-500 dark:text-slate-400 text-xs mb-8 uppercase tracking-widest font-semibold">
+            First-time Administrative Setup
+          </p>
           
-          <button 
-            type="submit" 
-            className="w-full py-3 bg-farm-600 hover:bg-farm-700 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-farm-500/10 flex items-center justify-center gap-2 cursor-pointer"
-            disabled={loading}
-          >
-            {loading ? <Loader size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
-            {isRegister ? "Initiate Operative" : "Access Console"}
-          </button>
-        </form>
-        
-        <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6 cursor-pointer hover:text-slate-400 dark:hover:text-slate-200 transition-colors uppercase font-bold tracking-wider" onClick={() => {
-          setIsRegister(!isRegister);
-          setAuthForm({ username: '', email: '', password: '', role: 'worker' });
-        }}>
-          {isRegister ? "🔐 Existing Operative? Login" : "Don't have an account? Sign Up"}
-        </p>
-      </div>
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Admin Username</label>
+              <input 
+                type="text"
+                required
+                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                placeholder="e.g. admin" 
+                value={authForm.username}
+                onChange={e => setAuthForm({...authForm, username: e.target.value})} 
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Admin Email</label>
+              <input 
+                type="email"
+                required
+                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                placeholder="admin@farm.com" 
+                value={authForm.email}
+                onChange={e => setAuthForm({...authForm, email: e.target.value})} 
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Setup Password</label>
+              <input 
+                type="password" 
+                required
+                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                placeholder="Min 4 characters" 
+                value={authForm.password}
+                onChange={e => setAuthForm({...authForm, password: e.target.value})} 
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              className="w-full py-3 bg-farm-600 hover:bg-farm-700 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-farm-500/10 flex items-center justify-center gap-2 cursor-pointer mt-2"
+              disabled={loading}
+            >
+              {loading ? <Loader size={18} className="animate-spin" /> : <UserPlus size={18} />}
+              Initialize & Register Admin
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ─── PANE 3: FORGOT PASSWORD (REQUEST RESET CODE) ─── */}
+      {authMode === 'forgot_send' && (
+        <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover animate-fade-in">
+          <div className="flex justify-center mb-4">
+            <div className="bg-farm-900/20 text-farm-400 p-4 rounded-full border border-farm-500/20">
+              <Mail size={36} className="animate-bounce-soft" />
+            </div>
+          </div>
+          <h2 className="text-center text-farm-500 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+            Admin Password Reset
+          </h2>
+          <p className="text-center text-slate-500 dark:text-slate-400 text-xs mb-8 uppercase tracking-widest font-semibold">
+            Send Verification Code
+          </p>
+          
+          <form onSubmit={handleForgotSendCode} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Admin Email Address</label>
+              <input 
+                type="email"
+                required
+                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                placeholder="admin@farm.com" 
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)} 
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              className="w-full py-3 bg-farm-600 hover:bg-farm-700 text-white font-bold rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-2"
+              disabled={loading}
+            >
+              {loading ? <Loader size={18} className="animate-spin" /> : <Send size={18} />}
+              Send Verification Code
+            </button>
+            
+            <button 
+              type="button" 
+              onClick={() => setAuthMode('login')}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg transition-all text-xs uppercase tracking-wider mt-2 cursor-pointer"
+            >
+              Back to Login
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ─── PANE 4: AUTHORIZE RESET PASSWORD WITH CODE ─── */}
+      {authMode === 'forgot_reset' && (
+        <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl flex flex-col transition-all pulse-border-hover animate-fade-in">
+          <div className="flex justify-center mb-4">
+            <div className="bg-farm-900/20 text-farm-400 p-4 rounded-full border border-farm-500/20">
+              <Key size={36} className="animate-bounce-soft" />
+            </div>
+          </div>
+          <h2 className="text-center text-farm-500 dark:text-farm-400 text-2xl font-extrabold tracking-tight mb-1">
+            Authorize Password Reset
+          </h2>
+          <p className="text-center text-slate-500 dark:text-slate-400 text-xs mb-8 uppercase tracking-widest font-semibold">
+            Input Reset Code
+          </p>
+          
+          <form onSubmit={handleForgotResetPw} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Email Address</label>
+              <input 
+                type="email"
+                required
+                readOnly
+                className="w-full bg-slate-100/50 border border-slate-200 text-slate-500 dark:bg-[#1a2333]/50 dark:border-slate-850 dark:text-slate-400 rounded-lg px-4 py-3 text-sm focus:outline-none"
+                value={forgotEmail}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">6-Digit Verification Code</label>
+              <input 
+                type="text"
+                required
+                maxLength="6"
+                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors text-center tracking-widest font-extrabold text-base"
+                placeholder="123456" 
+                value={resetCode}
+                onChange={e => setResetCode(e.target.value)} 
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">New Access Password</label>
+              <input 
+                type="password"
+                required
+                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                placeholder="Min 4 characters" 
+                value={resetNewPw}
+                onChange={e => setResetNewPw(e.target.value)} 
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              className="w-full py-3 bg-farm-600 hover:bg-farm-700 text-white font-bold rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-2"
+              disabled={loading}
+            >
+              {loading ? <Loader size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+              Verify & Reset Password
+            </button>
+            
+            <button 
+              type="button" 
+              onClick={() => setAuthMode('forgot_send')}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg transition-all text-xs uppercase tracking-wider mt-2 cursor-pointer"
+            >
+              Request New Code
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 
@@ -559,10 +800,11 @@ function App() {
       {/* Container wrapper matching flock_farm */}
       <div className="max-w-[1100px] w-full mx-auto px-4 md:px-6 py-4 space-y-4 flex-1 flex flex-col">
         
-        {/* Header Block */}
+        {/* Header Block with adjusted left and right sides */}
         <header className={`flex items-center justify-between pb-3 border-b transition-colors ${
           isDark ? 'border-slate-800' : 'border-slate-200'
         }`}>
+          {/* Left side: Logo, brand and subtitle */}
           <div className="flex items-center gap-3">
             <img 
               src="/logo.png" 
@@ -570,7 +812,7 @@ function App() {
               onError={(e) => { e.target.src = "https://raw.githubusercontent.com/musman5911/flock_farm/main/public/logo-icon.png"; }}
             />
             <div>
-              <h1 className={`font-black tracking-tight leading-none text-sm md:text-base ${isDark ? 'text-white' : 'text-slate-950'}`}>
+              <h1 className={`font-black tracking-tight leading-none text-base md:text-lg ${isDark ? 'text-white' : 'text-slate-950'}`}>
                 Usman Agri Farm
               </h1>
               <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">
@@ -579,11 +821,12 @@ function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          {/* Right side: quick actions */}
+          <div className="flex items-center gap-2.5">
             {/* Dark/Light mode toggle */}
             <button 
               onClick={() => setIsDark(!isDark)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
+              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
                 isDark 
                   ? 'border-slate-800 bg-slate-900 text-yellow-400 hover:bg-slate-800' 
                   : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
@@ -596,7 +839,7 @@ function App() {
             {/* Admin Menu popup toggle */}
             <button 
               onClick={() => setAdminMenuOpen(true)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
+              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
                 isDark 
                   ? 'border-slate-800 bg-slate-900 text-farm-400 hover:bg-slate-800 hover:text-farm-300' 
                   : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-farm-600'
@@ -609,7 +852,7 @@ function App() {
             {/* Logout button */}
             <button 
               onClick={handleLogout}
-              className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
+              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
                 isDark 
                   ? 'border-slate-800 bg-slate-900 text-slate-400 hover:text-red-400' 
                   : 'border-slate-200 bg-white text-slate-500 hover:text-red-600'
@@ -621,7 +864,7 @@ function App() {
           </div>
         </header>
 
-        {/* ─── HORIZONTAL SCROLLABLE TABS (Matches flock_farm exact layout) ─── */}
+        {/* ─── HORIZONTAL SCROLLABLE TABS ─── */}
         <div className={`flex items-center gap-1 overflow-x-auto border-b pb-1.5 shrink-0 select-none custom-scrollbar ${
           isDark ? 'border-slate-800' : 'border-slate-200'
         }`}>
@@ -645,18 +888,6 @@ function App() {
             );
           })}
         </div>
-
-        {/* Floating alerts */}
-        {alertMsg.text && (
-          <div className={`fixed top-6 right-6 z-50 p-4 rounded-xl shadow-2xl border text-xs md:text-sm max-w-sm animate-fade-in-up ${
-            alertMsg.isError ? 'bg-red-950 border-red-500 text-red-200' : 'bg-farm-950 border-farm-500 text-farm-200'
-          }`}>
-            <div className="flex items-center gap-3">
-              {alertMsg.isError ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
-              <span>{alertMsg.text}</span>
-            </div>
-          </div>
-        )}
 
         {/* Tab views content area */}
         <div className="flex-1 min-h-0 flex flex-col">
@@ -689,7 +920,7 @@ function App() {
                   }`}
                 >
                   <div>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Crops Planted</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">Crops Planted</p>
                     <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{crops.length}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">{crops.filter(c => c.status === 'Growing').length} Growing phase</p>
                   </div>
@@ -705,7 +936,7 @@ function App() {
                   }`}
                 >
                   <div>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Operational Profit</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">Operational Profit</p>
                     <p className={`font-black mt-1 ${titleClassMap[textSize]} ${netProfit >= 0 ? 'text-farm-400' : 'text-red-400'}`}>
                       ${netProfit.toLocaleString()}
                     </p>
@@ -723,7 +954,7 @@ function App() {
                   }`}
                 >
                   <div>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Duties scheduled</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">Duties scheduled</p>
                     <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{tasks.filter(t => t.status === 'Pending').length}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">{tasks.filter(t => t.status === 'Completed').length} Duties completed</p>
                   </div>
@@ -739,7 +970,7 @@ function App() {
                   }`}
                 >
                   <div>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Authorized users</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">Authorized users</p>
                     <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{users.length || 1}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Active worker logins</p>
                   </div>
@@ -968,7 +1199,7 @@ function App() {
                 <div className={`border p-5 rounded-2xl shadow-sm ${
                   isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
                 }`}>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Operational Expenditures</p>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Expenditures</p>
                   <h4 className="text-2xl font-black text-red-400 mt-1">${totalExpense.toLocaleString()}</h4>
                 </div>
                 <div className={`border p-5 rounded-2xl shadow-sm ${
@@ -1245,169 +1476,6 @@ function App() {
             </div>
           )}
 
-          {/* ───────────────── VIEW: SETTINGS & ADMIN ───────────────── */}
-          {activeTab === 'settings' && (
-            <div className="space-y-8 animate-fade-in">
-              <div className={`border-b pb-5 ${
-                isDark ? 'border-slate-800' : 'border-slate-200'
-              }`}>
-                <h3 className="text-base md:text-lg font-black">Settings & System Admin Portal</h3>
-                <p className="text-slate-500 text-xs">Configure responsive layouts, account passwords, database atomic backups, and worker registries.</p>
-              </div>
-
-              {/* Typography Adjuster */}
-              <div className={`border p-6 rounded-2xl shadow-md space-y-4 ${
-                isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
-              }`}>
-                <div className="flex items-center gap-3 border-b border-slate-800/10 dark:border-slate-800 pb-3">
-                  <Type className="text-farm-400" />
-                  <div>
-                    <h4 className="font-extrabold text-sm md:text-base">Display & Typography Settings</h4>
-                    <p className="text-xs text-slate-500">Configure global dashboard font size presentation scales.</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {['sm', 'base', 'md', 'lg'].map(size => (
-                    <button 
-                      key={size}
-                      onClick={() => handleTextSizeChange(size)}
-                      className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                        textSize === size 
-                          ? 'bg-farm-600 border-farm-500 text-white' 
-                          : isDark
-                            ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
-                            : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      {size === 'sm' ? "Small Font" : size === 'base' ? "Normal Font" : size === 'md' ? "Medium Font" : "Large Font"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Worker Accounts Management Panel (Admin Only) */}
-              {userRole === 'admin' ? (
-                <div className={`border rounded-2xl p-6 shadow-md space-y-6 ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
-                }`}>
-                  <div className="flex items-center gap-3 border-b border-slate-800/10 dark:border-slate-800 pb-4">
-                    <Users className="text-farm-400" />
-                    <div>
-                      <h4 className="font-extrabold text-sm md:text-base">Worker Account Registries (Admin Privileged)</h4>
-                      <p className="text-xs text-slate-500">Create new worker logins, configure access scales, and remove worker registry records.</p>
-                    </div>
-                  </div>
-
-                  {/* Creation Form */}
-                  <form onSubmit={handleAddWorker} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end bg-slate-900/10 dark:bg-[#151d30]/40 p-4 rounded-xl border border-slate-300 dark:border-slate-800">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Username</label>
-                      <input 
-                        className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500"
-                        placeholder="e.g. johan"
-                        value={newWorkerForm.username}
-                        onChange={e => setNewWorkerForm({...newWorkerForm, username: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Email</label>
-                      <input 
-                        type="email"
-                        className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500"
-                        placeholder="johan@farm.com"
-                        value={newWorkerForm.email}
-                        onChange={e => setNewWorkerForm({...newWorkerForm, email: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Password</label>
-                      <input 
-                        type="password"
-                        className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500"
-                        placeholder="Secret word"
-                        value={newWorkerForm.password}
-                        onChange={e => setNewWorkerForm({...newWorkerForm, password: e.target.value})}
-                      />
-                    </div>
-                    <button className="py-2 px-4 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer">
-                      <UserPlus size={14} /> Add Worker
-                    </button>
-                  </form>
-
-                  {/* Worker Accounts Listing */}
-                  <div className="space-y-3">
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Registered Operatives ({users.length})</p>
-                    <div className="divide-y divide-slate-200 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-900/10 dark:bg-[#151d30]/20">
-                      {users.map(u => (
-                        <div key={u._id} className="flex justify-between items-center p-4">
-                          <div>
-                            <p className="text-sm font-bold">{u.username} <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 ml-2">{u.role}</span></p>
-                            <p className="text-xs text-slate-500">{u.email}</p>
-                          </div>
-                          {u.username !== 'admin' && (
-                            <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-slate-400 hover:text-red-400 rounded-lg cursor-pointer">
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className={`border p-6 rounded-2xl shadow-md text-slate-500 flex items-center gap-3 ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
-                }`}>
-                  <ShieldCheck size={20} />
-                  <p className="text-xs font-medium">Worker account access level detected. Worker registry management panel is restricted to Administrators.</p>
-                </div>
-              )}
-
-              {/* Database Backup & Restore Center (Admin Only) */}
-              {userRole === 'admin' ? (
-                <div className={`border rounded-2xl p-6 shadow-md space-y-6 ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
-                }`}>
-                  <div className="flex items-center gap-3 border-b border-slate-800/10 dark:border-slate-800 pb-4">
-                    <Database className="text-farm-400" />
-                    <div>
-                      <h4 className="font-extrabold text-sm md:text-base">Database Backup & Recovery Control (Admin Privileged)</h4>
-                      <p className="text-xs text-slate-500">Atomic full-database backup exports and backup recovery restoration.</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Export */}
-                    <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
-                      <h5 className="text-sm font-bold">Database Backup Export</h5>
-                      <p className="text-xs text-slate-500 leading-relaxed">Download a single-file atomic JSON backup containing all crops, financial logs, duties rosters, and worker lists.</p>
-                      <button onClick={handleExportBackup} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer">
-                        <Database size={14} /> Download JSON Backup
-                      </button>
-                    </div>
-
-                    {/* Import/Restore */}
-                    <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
-                      <h5 className="text-sm font-bold">Database Recovery Restore</h5>
-                      <p className="text-xs text-slate-500 leading-relaxed">Restore all databases atomically from a previously downloaded AgriFarm backup file. Warning: This clears all existing tables.</p>
-                      <label className="inline-flex items-center gap-2 px-4 py-2 bg-farm-900/30 hover:bg-farm-900/50 text-farm-300 border border-farm-800 hover:border-farm-700 text-xs font-bold rounded-lg cursor-pointer transition-all">
-                        <Database size={14} /> Upload & Restore Database
-                        <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className={`border p-6 rounded-2xl shadow-md text-slate-500 flex items-center gap-3 ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
-                }`}>
-                  <ShieldCheck size={20} />
-                  <p className="text-xs font-medium">Worker account access level detected. Database backup and restore center is restricted to Administrators.</p>
-                </div>
-              )}
-            </div>
-          )}
-
         </div>
       </div>
 
@@ -1416,48 +1484,48 @@ function App() {
       {/* CROP FORM MODAL */}
       {showCropModal && (
         <div className="fixed inset-0 z-50 bg-[#000]/70 flex justify-center items-center p-4 backdrop-blur-xs">
-          <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative animate-fade-in-up">
+          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative animate-fade-in-up">
             <button onClick={() => setShowCropModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"><X size={20} /></button>
-            <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2"><Sprout className="text-farm-400" /> {editingCrop ? "Modify Crop Cycle" : "Log New Crop cycle"}</h3>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2"><Sprout className="text-farm-400" /> {editingCrop ? "Modify Crop Cycle" : "Log New Crop cycle"}</h3>
             
             <form onSubmit={handleCropSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Crop Name *</label>
-                  <input required className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.name} onChange={e => setCropForm({...cropForm, name: e.target.value})} placeholder="e.g. Premium Rice" />
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Crop Name *</label>
+                  <input required className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={cropForm.name} onChange={e => setCropForm({...cropForm, name: e.target.value})} placeholder="e.g. Premium Rice" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Variety / Classification</label>
-                  <input className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.variety} onChange={e => setCropForm({...cropForm, variety: e.target.value})} placeholder="e.g. Basmati 370" />
+                  <input className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={cropForm.variety} onChange={e => setCropForm({...cropForm, variety: e.target.value})} placeholder="e.g. Basmati 370" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Field / Plot Sector</label>
-                  <input className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.field} onChange={e => setCropForm({...cropForm, field: e.target.value})} placeholder="e.g. Sector 3A" />
+                  <input className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={cropForm.field} onChange={e => setCropForm({...cropForm, field: e.target.value})} placeholder="e.g. Sector 3A" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Estimated Yield (kg)</label>
-                  <input type="number" step="0.1" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.yield_kg} onChange={e => setCropForm({...cropForm, yield_kg: e.target.value})} placeholder="0.0" />
+                  <input type="number" step="0.1" className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={cropForm.yield_kg} onChange={e => setCropForm({...cropForm, yield_kg: e.target.value})} placeholder="0.0" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Planted Date</label>
-                  <input type="date" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.plant_date} onChange={e => setCropForm({...cropForm, plant_date: e.target.value})} />
+                  <input type="date" className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium" value={cropForm.plant_date} onChange={e => setCropForm({...cropForm, plant_date: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Harvest Date Target</label>
-                  <input type="date" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.harvest_date} onChange={e => setCropForm({...cropForm, harvest_date: e.target.value})} />
+                  <input type="date" className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium" value={cropForm.harvest_date} onChange={e => setCropForm({...cropForm, harvest_date: e.target.value})} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Current Cycle Status</label>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider font-semibold">Current Cycle Status</label>
                 <select 
-                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
+                  className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium cursor-pointer"
                   value={cropForm.status}
                   onChange={e => setCropForm({...cropForm, status: e.target.value})}
                 >
@@ -1469,12 +1537,12 @@ function App() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Notes / Soil Details</label>
-                <textarea rows="2" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={cropForm.notes} onChange={e => setCropForm({...cropForm, notes: e.target.value})} placeholder="Soil pH is 6.5, added organic fertilizer..." />
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Notes / Soil Details</label>
+                <textarea rows="2" className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={cropForm.notes} onChange={e => setCropForm({...cropForm, notes: e.target.value})} placeholder="Soil pH is 6.5, added organic fertilizer..." />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setShowCropModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider cursor-pointer">Cancel</button>
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onClick={() => setShowCropModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold uppercase tracking-wider cursor-pointer">Cancel</button>
                 <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md cursor-pointer">
                   <CheckCircle size={14} /> {editingCrop ? "Update Crop" : "Plant Crop"}
                 </button>
@@ -1487,16 +1555,16 @@ function App() {
       {/* FINANCE FORM MODAL */}
       {showFinanceModal && (
         <div className="fixed inset-0 z-50 bg-[#000]/70 flex justify-center items-center p-4 backdrop-blur-xs">
-          <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative animate-fade-in-up">
+          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative animate-fade-in-up">
             <button onClick={() => setShowFinanceModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"><X size={20} /></button>
-            <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2"><DollarSign className="text-farm-400" /> {editingFinance ? "Modify Transaction" : "Record Book Log"}</h3>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2"><DollarSign className="text-farm-400" /> {editingFinance ? "Modify Transaction" : "Record Book Log"}</h3>
             
             <form onSubmit={handleFinanceSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Ledger Flow *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Ledger Flow *</label>
                   <select 
-                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
+                    className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium cursor-pointer"
                     value={finForm.type}
                     onChange={e => setFinForm({...finForm, type: e.target.value})}
                   >
@@ -1505,20 +1573,20 @@ function App() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Amount ($) *</label>
-                  <input required type="number" step="0.01" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={finForm.amount} onChange={e => setFinForm({...finForm, amount: e.target.value})} placeholder="0.00" />
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Amount ($) *</label>
+                  <input required type="number" step="0.01" className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={finForm.amount} onChange={e => setFinForm({...finForm, amount: e.target.value})} placeholder="0.00" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Item Description / Category *</label>
-                <input required className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={finForm.category} onChange={e => setFinForm({...finForm, category: e.target.value})} placeholder="e.g. High-efficiency Sprinkler Purchase" />
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Item Description / Category *</label>
+                <input required className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={finForm.category} onChange={e => setFinForm({...finForm, category: e.target.value})} placeholder="e.g. High-efficiency Sprinkler Purchase" />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Associate with Crop Sector</label>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Associate with Crop Sector</label>
                 <select 
-                  className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
+                  className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium cursor-pointer"
                   value={finForm.crop_id}
                   onChange={e => setFinForm({...finForm, crop_id: e.target.value})}
                 >
@@ -1530,12 +1598,12 @@ function App() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Ledger Notes</label>
-                <textarea rows="2" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={finForm.notes} onChange={e => setFinForm({...finForm, notes: e.target.value})} placeholder="Purchase verified by musman, receipt attached..." />
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Ledger Notes</label>
+                <textarea rows="2" className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={finForm.notes} onChange={e => setFinForm({...finForm, notes: e.target.value})} placeholder="Purchase verified by musman, receipt attached..." />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setShowFinanceModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider cursor-pointer">Cancel</button>
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onClick={() => setShowFinanceModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold uppercase tracking-wider cursor-pointer">Cancel</button>
                 <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md cursor-pointer">
                   <CheckCircle size={14} /> {editingFinance ? "Update Ledger" : "Record Book Log"}
                 </button>
@@ -1548,21 +1616,21 @@ function App() {
       {/* TASK FORM MODAL */}
       {showTaskModal && (
         <div className="fixed inset-0 z-50 bg-[#000]/70 flex justify-center items-center p-4 backdrop-blur-xs">
-          <div className="bg-[#0f172a] border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative animate-fade-in-up">
+          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl relative animate-fade-in-up">
             <button onClick={() => setShowTaskModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"><X size={20} /></button>
-            <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2"><CheckSquare className="text-farm-400" /> {editingTask ? "Modify Task Assignment" : "Assign Farm Duty"}</h3>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2"><CheckSquare className="text-farm-400" /> {editingTask ? "Modify Task Assignment" : "Assign Farm Duty"}</h3>
             
             <form onSubmit={handleTaskSubmit} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Duty Description / Assignment Title *</label>
-                <input required className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={taskForm.title} onChange={e => setTaskForm({...taskForm, title: e.target.value})} placeholder="e.g. Fertilize Sector 3 Wheat" />
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Duty Description / Assignment Title *</label>
+                <input required className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={taskForm.title} onChange={e => setTaskForm({...taskForm, title: e.target.value})} placeholder="e.g. Fertilize Sector 3 Wheat" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Assign to Worker</label>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Assign to Worker</label>
                   <select 
-                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
+                    className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium cursor-pointer"
                     value={taskForm.assigned_to}
                     onChange={e => setTaskForm({...taskForm, assigned_to: e.target.value})}
                   >
@@ -1573,9 +1641,9 @@ function App() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Priority Level</label>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Priority Level</label>
                   <select 
-                    className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium"
+                    className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium cursor-pointer"
                     value={taskForm.priority}
                     onChange={e => setTaskForm({...taskForm, priority: e.target.value})}
                   >
@@ -1587,17 +1655,17 @@ function App() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Duty Due Date</label>
-                <input type="date" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500 font-medium" value={taskForm.due_date} onChange={e => setTaskForm({...taskForm, due_date: e.target.value})} />
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Duty Due Date</label>
+                <input type="date" className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium" value={taskForm.due_date} onChange={e => setTaskForm({...taskForm, due_date: e.target.value})} />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Task Guidelines / Operational Instructions</label>
-                <textarea rows="2" className="w-full bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-xs outline-none focus:border-farm-500" value={taskForm.notes} onChange={e => setTaskForm({...taskForm, notes: e.target.value})} placeholder="Ensure irrigation valves are closed after 2 hours..." />
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Task Guidelines / Operational Instructions</label>
+                <textarea rows="2" className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500" value={taskForm.notes} onChange={e => setTaskForm({...taskForm, notes: e.target.value})} placeholder="Ensure irrigation valves are closed after 2 hours..." />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setShowTaskModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200 font-bold uppercase tracking-wider cursor-pointer">Cancel</button>
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onClick={() => setShowTaskModal(false)} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold uppercase tracking-wider cursor-pointer">Cancel</button>
                 <button type="submit" className="px-5 py-2 bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-md cursor-pointer">
                   <CheckCircle size={14} /> {editingTask ? "Update Assignment" : "Assign Duty"}
                 </button>
@@ -1636,7 +1704,7 @@ function App() {
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Below is a breakdown of all crop segments currently registerized inside the farm database:</p>
           <div className="grid grid-cols-1 gap-3 max-h-[50vh] overflow-y-auto pr-1">
             {crops.map(c => (
-              <div key={c._id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+              <div key={c._id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 text-slate-800 dark:text-slate-100">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-extrabold text-slate-800 dark:text-white">{c.name}</span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-farm-900/20 text-farm-400 border border-farm-900/30 uppercase">{c.status}</span>
@@ -1675,7 +1743,7 @@ function App() {
           </div>
           <div className="space-y-2.5 max-h-[40vh] overflow-y-auto pr-1">
             {finance.slice(0, 15).map(f => (
-              <div key={f._id} className="flex justify-between items-center text-xs p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20">
+              <div key={f._id} className="flex justify-between items-center text-xs p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 text-slate-800 dark:text-slate-100">
                 <div>
                   <p className="font-bold text-slate-800 dark:text-white">{f.category}</p>
                   <p className="text-[10px] text-slate-400">{f.date}</p>
@@ -1702,13 +1770,13 @@ function App() {
           <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Active tasks on the roster requiring operative action:</p>
           <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
             {tasks.filter(t => t.status === 'Pending').map(t => (
-              <div key={t._id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+              <div key={t._id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 text-slate-800 dark:text-slate-100">
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-extrabold text-slate-800 dark:text-white">{t.title}</span>
                   <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-900/20 uppercase">{t.priority} Priority</span>
                 </div>
                 {t.notes && <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-2.5">{t.notes}</p>}
-                <div className="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-800/10 dark:border-slate-800/60 pt-2">
+                <div className="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-2">
                   <span>Operative: <strong className="text-slate-700 dark:text-slate-300">{t.assigned_to || 'General'}</strong></span>
                   <span>Due: <strong className="text-slate-700 dark:text-slate-300">{t.due_date || 'N/A'}</strong></span>
                 </div>
@@ -1731,7 +1799,7 @@ function App() {
       >
         <div className="space-y-4">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">List of worker credentials currently granted access to AgriFarm systems:</p>
-          <div className="divide-y divide-slate-200 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/20">
+          <div className="divide-y divide-slate-200 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/20 text-slate-800 dark:text-slate-100">
             {users.map(u => (
               <div key={u._id} className="flex justify-between items-center p-4">
                 <div>
@@ -1739,7 +1807,7 @@ function App() {
                     {u.username} 
                     <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 ml-2">{u.role}</span>
                   </p>
-                  <p className="text-[11px] text-slate-500">{u.email}</p>
+                  {u.email && <p className="text-[11px] text-slate-500">{u.email}</p>}
                 </div>
                 <span className="text-[10px] text-farm-500 font-bold uppercase tracking-widest flex items-center gap-1">
                   <ShieldCheck size={14} /> Verified
