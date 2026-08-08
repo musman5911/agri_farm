@@ -75,7 +75,6 @@ function App() {
     setActiveNav(navKey);
   };
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') !== 'light');
-  const [textSize, setTextSize] = useState(localStorage.getItem('text_size') || 'base'); // sm, base, md, lg
   const [modal, setModal] = useState(null);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
 
@@ -251,21 +250,6 @@ function App() {
     if (crop.status === 'Harvesting') return 82;
     if (crop.status === 'Growing') return 58;
     return 0;
-  };
-
-  // Text size configuration helper
-  const textClassMap = {
-    sm: 'text-xs md:text-sm',
-    base: 'text-sm md:text-base',
-    md: 'text-base md:text-lg',
-    lg: 'text-lg md:text-xl'
-  };
-
-  const titleClassMap = {
-    sm: 'text-base md:text-lg font-black',
-    base: 'text-lg md:text-xl font-black',
-    md: 'text-xl md:text-2xl font-black',
-    lg: 'text-2xl md:text-3xl font-black'
   };
 
   useEffect(() => { 
@@ -671,11 +655,6 @@ function App() {
       }
     };
     reader.readAsText(file);
-  };
-
-  const handleTextSizeChange = (size) => {
-    setTextSize(size);
-    localStorage.setItem('text_size', size);
   };
 
   // --- Helper Calculations ---
@@ -1193,9 +1172,9 @@ function App() {
 
   // --- RENDER MAIN INTERFACE ---
   return (
-    <div className={`agri-image02-app min-h-screen flex flex-col transition-colors duration-300 ${
+    <div className={`agri-image02-app min-h-screen flex flex-col transition-colors duration-300 text-xs sm:text-sm md:text-base ${
       isDark ? 'bg-[#070b13] text-slate-100' : 'bg-[#fcfaf2] text-[#1c1917]'
-    } ${textClassMap[textSize]}`}>
+    }`}>
       
       {/* Container wrapper matching flock_farm */}
       <div className="agri-app-shell w-full flex-1 flex">
@@ -1998,6 +1977,10 @@ function App() {
         </div>
       </main>
 
+      </div> {/* closes agri-body-frame */}
+      </div> {/* closes agri-image02-layout */}
+      </div> {/* closes agri-app-shell */}
+
       {/* Floating Action/Saving Toast Indicator */}
       <AnimatePresence>
         {alertMsg.text && (
@@ -2223,8 +2206,6 @@ function App() {
         onUpdateEmail={setCurrentUserEmail}
         isDark={isDark}
         onToggleDark={setIsDark}
-        textSize={textSize}
-        onTextSizeChange={handleTextSizeChange}
         users={users}
         crops={crops}
         finance={finance}
@@ -2633,9 +2614,6 @@ function App() {
         </div>
       </DetailModal>
 
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -11,7 +11,6 @@ import {
   ShieldCheck, 
   Lock, 
   Check, 
-  Type,
   Loader,
   AlertTriangle,
   Mail,
@@ -44,8 +43,6 @@ export default function AdminMenu({
   onUpdateEmail,
   isDark,
   onToggleDark,
-  textSize,
-  onTextSizeChange,
   users,
   crops = [],
   finance = [],
@@ -829,33 +826,7 @@ export default function AdminMenu({
                     </div>
                   </div>
 
-                  {/* Typography Settings */}
-                  <div className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b border-[#e6e6de] dark:border-[#203528]">
-                      <div className="p-1.5 bg-farm-900/10 text-farm-600 dark:text-farm-400 rounded-lg">
-                        <Type size={14} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Typography Font Scaling</h4>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Adjust text scales for better legibility.</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {['sm', 'base', 'md', 'lg'].map(size => (
-                        <button 
-                          key={size}
-                          onClick={() => onTextSizeChange(size)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                            textSize === size 
-                              ? 'bg-farm-600 border-farm-500 text-white' 
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-                          }`}
-                        >
-                          {size === 'sm' ? "Small" : size === 'base' ? "Normal" : size === 'md' ? "Medium" : "Large"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+
 
                   {/* Administrator Profile Email Form */}
                   {isAdmin && (
