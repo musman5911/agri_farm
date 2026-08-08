@@ -132,6 +132,10 @@ function App() {
   const [cropSearch, setCropSearch] = useState('');
   const [cropFieldFilter, setCropFieldFilter] = useState('all');
   const [selectedCrop, setSelectedCrop] = useState(null);
+  const [selectedFinance, setSelectedFinance] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedMonthRow, setSelectedMonthRow] = useState(null);
+  const [selectedExpenseCategory, setSelectedExpenseCategory] = useState(null);
   const [financeFilter, setFinanceFilter] = useState('all');
   const [taskFilter, setTaskFilter] = useState('all');
 
@@ -1269,117 +1273,85 @@ function App() {
           {/* ───────────────── VIEW: DASHBOARD ───────────────── */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6 animate-fade-in flex-1">
-              <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
-                isDark 
-                  ? 'bg-gradient-to-r from-farm-900/20 via-slate-950 to-slate-950 border-farm-500/20' 
-                  : 'bg-gradient-to-r from-farm-50 via-white to-white border-farm-200'
-              }`}>
-                <div>
-                  <h2 className={`font-black leading-tight ${isDark ? 'text-white' : 'text-slate-950'} ${titleClassMap[textSize]}`}>
-                    Telemetry Operations: {username}
-                  </h2>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Real-time indicators, operational financials, and scheduled crop cares are fully operational.</p>
+              <div className="agri-page-hero">
+                <div className="agri-page-title">
+                  <div className="agri-title-icon"><LayoutDashboard size={30}/></div>
+                  <div>
+                    <h2>Telemetry Operations Dashboard</h2>
+                    <p>Welcome back, <strong>{username}</strong> • System indicators and controls are fully operational.</p>
+                  </div>
                 </div>
-                <span className="bg-farm-900/30 text-farm-600 dark:text-farm-400 border border-farm-500/20 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 shrink-0">
-                  <ShieldCheck size={14} /> System Secure
+                <span className="agri-primary-action bg-farm-600/10 text-farm-600 dark:text-farm-400 border border-farm-500/20 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 shrink-0">
+                  <ShieldCheck size={16} /> System Secure
                 </span>
               </div>
 
-              {/* Status Grid Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Status Grid Cards using .agri-kpi-grid */}
+              <div className="agri-kpi-grid">
                 <div 
                   onClick={() => setModal('crops_planted')}
-                  className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fcfbf9] border-[#e2dfdb] hover:shadow-md'
-                  }`}
+                  className="agri-kpi-card cursor-pointer"
                 >
+                  <span className="agri-kpi-icon green"><Sprout size={22}/></span>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">Crops Planted</p>
-                    <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{crops.length}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">{crops.filter(c => c.status === 'Growing').length} Growing phase</p>
-                  </div>
-                  <div className={`p-3 rounded-xl border ${
-                    isDark ? 'bg-farm-900/20 text-farm-600 dark:text-farm-400 border-farm-500/10' : 'bg-farm-50 text-farm-700 border-farm-200'
-                  }`}>
-                    <Sprout size={20} />
+                    <small>Crops Planted</small>
+                    <strong>{crops.length}</strong>
+                    <p>{crops.filter(c => c.status === 'Growing').length} Growing phase</p>
                   </div>
                 </div>
 
                 <div 
                   onClick={() => setModal('ledger_profit')}
-                  className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fcfbf9] border-[#e2dfdb] hover:shadow-md'
-                  }`}
+                  className="agri-kpi-card cursor-pointer"
                 >
+                  <span className={`agri-kpi-icon ${netProfit >= 0 ? 'green' : 'wheat'}`}><TrendingUp size={22}/></span>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">Operational Profit</p>
-                    <p className={`font-black mt-1 ${titleClassMap[textSize]} ${
-                      netProfit >= 0 
-                        ? (isDark ? 'text-farm-600 dark:text-farm-400' : 'text-farm-700') 
-                        : (isDark ? 'text-red-400' : 'text-red-700')
-                    }`}>
+                    <small>Operational Profit</small>
+                    <strong className={netProfit >= 0 ? 'text-farm-600 dark:text-farm-400' : 'text-red-400'}>
                       ${formatCurrency(netProfit)}
-                    </p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Income vs Outflow ledger</p>
-                  </div>
-                  <div className={`p-3 rounded-xl border ${
-                    netProfit >= 0 
-                      ? (isDark ? 'bg-farm-900/20 text-farm-600 dark:text-farm-400 border-farm-500/10' : 'bg-farm-50 text-farm-700 border-farm-200') 
-                      : (isDark ? 'bg-red-950/40 text-red-400 border-red-900/20' : 'bg-red-50 text-red-700 border-red-200')
-                  }`}>
-                    {netProfit >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
+                    </strong>
+                    <p>Income vs Outflow ledger</p>
                   </div>
                 </div>
 
                 <div 
                   onClick={() => setModal('pending_duties')}
-                  className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fcfbf9] border-[#e2dfdb] hover:shadow-md'
-                  }`}
+                  className="agri-kpi-card cursor-pointer"
                 >
+                  <span className="agri-kpi-icon blue"><CheckSquare size={22}/></span>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">Duties scheduled</p>
-                    <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{tasks.filter(t => t.status === 'Pending').length}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">{tasks.filter(t => t.status === 'Completed').length} Duties completed</p>
-                  </div>
-                  <div className={`p-3 rounded-xl border ${
-                    isDark ? 'bg-indigo-900/20 text-indigo-400 border-indigo-900/20' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                  }`}>
-                    <CheckSquare size={20} />
+                    <small>Duties Scheduled</small>
+                    <strong>{tasks.filter(t => t.status === 'Pending').length}</strong>
+                    <p>{tasks.filter(t => t.status === 'Completed').length} Duties completed</p>
                   </div>
                 </div>
 
                 <div 
                   onClick={() => setModal('worker_operatives')}
-                  className={`border p-5 rounded-2xl flex items-center justify-between shadow-sm transition-all cursor-pointer hover:scale-[1.02] duration-200 hover:shadow-lg ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fcfbf9] border-[#e2dfdb] hover:shadow-md'
-                  }`}
+                  className="agri-kpi-card cursor-pointer"
                 >
+                  <span className="agri-kpi-icon gold"><Users size={22}/></span>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider">Authorized users</p>
-                    <p className={`font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'} ${titleClassMap[textSize]}`}>{users.length || 1}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Active worker logins</p>
-                  </div>
-                  <div className={`p-3 rounded-xl border ${
-                    isDark ? 'bg-teal-900/20 text-teal-400 border-teal-900/20' : 'bg-teal-50 text-teal-700 border-teal-200'
-                  }`}>
-                    <Users size={20} />
+                    <small>Authorized Users</small>
+                    <strong>{users.length || 1}</strong>
+                    <p>Active worker logins</p>
                   </div>
                 </div>
               </div>
 
               {/* Sub-panels for Quick Actions & Overview */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="agri-lower-grid">
                 
                 {/* Active crops preview card */}
-                <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                }`}>
-                  <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-3 mb-4">
-                    <h4 className="font-extrabold flex items-center gap-2"><Sprout size={16} className="text-farm-600 dark:text-farm-400" /> Planted Sectors</h4>
-                    <button onClick={() => navigateTo('crops')} className="text-xs text-farm-500 hover:text-farm-600 dark:text-farm-400 font-bold uppercase tracking-wider cursor-pointer">View All</button>
+                <section className="agri-panel">
+                  <div className="agri-panel-heading">
+                    <div>
+                      <h3><Sprout size={21} /> Planted Sectors</h3>
+                      <p>Latest active crop cycles in the soil.</p>
+                    </div>
+                    <button onClick={() => navigateTo('crops')} className="agri-text-action">View All <ArrowUpRight size={17}/></button>
                   </div>
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                  <div className="p-5 space-y-3 max-h-64 overflow-y-auto">
                     {crops.length === 0 ? (
                       <p className="text-slate-500 text-xs text-center py-8">No crops currently registered.</p>
                     ) : crops.slice(0, 4).map(c => (
@@ -1396,17 +1368,18 @@ function App() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </section>
 
                 {/* Duty board preview card */}
-                <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                }`}>
-                  <div className="flex justify-between items-center border-b border-slate-800/10 dark:border-slate-800 pb-3 mb-4">
-                    <h4 className="font-extrabold flex items-center gap-2"><HeartPulse size={16} className="text-farm-600 dark:text-farm-400" /> Care & Operations Roster</h4>
-                    <button onClick={() => navigateTo('tasks')} className="text-xs text-farm-500 hover:text-farm-600 dark:text-farm-400 font-bold uppercase tracking-wider cursor-pointer">Open Board</button>
+                <section className="agri-panel">
+                  <div className="agri-panel-heading">
+                    <div>
+                      <h3><HeartPulse size={21} /> Care & Operations Roster</h3>
+                      <p>Current pending care duty schedules.</p>
+                    </div>
+                    <button onClick={() => navigateTo('tasks')} className="agri-text-action">Open Board <ArrowUpRight size={17}/></button>
                   </div>
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                  <div className="p-5 space-y-3 max-h-64 overflow-y-auto">
                     {tasks.length === 0 ? (
                       <p className="text-slate-500 text-xs text-center py-8">Care roster is clean.</p>
                     ) : tasks.filter(t => t.status !== 'Completed').slice(0, 4).map(t => (
@@ -1426,7 +1399,7 @@ function App() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </section>
               </div>
             </div>
           )}
@@ -1513,16 +1486,32 @@ function App() {
                   ) : filteredCrops.map((c, idx) => {
                     const progress = getCropProgress(c);
                     return (
-                      <article key={c._id} className="agri-crop-card" style={{animationDelay: `${idx * .06}s`}}>
-                        <div className="agri-crop-photo" style={{backgroundImage:`url(${getCropImage(c.name)})`}}>
+                      <article key={c._id} className="agri-crop-card">
+                        <div 
+                          className="agri-crop-photo cursor-pointer hover:scale-[1.01] transition-transform" 
+                          style={{backgroundImage:`url(${getCropImage(c.name)})`}}
+                          onClick={() => setSelectedCrop(c)}
+                        >
                           <span className={`agri-status ${String(c.status).toLowerCase()}`}>{c.status}</span>
                           <span className="agri-crop-round-icon"><Sprout size={20}/></span>
                         </div>
                         <div className="agri-crop-card-body">
-                          <div className="agri-crop-name"><div><h4>{c.name}</h4><p>{c.variety || 'Standard Variety'}</p></div><span className="agri-season">{c.status === 'Planted' ? 'Planned' : c.status}</span></div>
-                          <div className="agri-crop-stats"><span><MapPin size={14}/>{c.field || 'Farm-wide'}</span><span><Scale size={14}/>{c.yield_kg ? `${Number(c.yield_kg).toLocaleString()} kg` : 'Yield pending'}</span></div>
-                          <div className="agri-progress"><div><span>Crop Progress</span><strong>{progress}%</strong></div><div className="agri-progress-track"><span style={{width:`${progress}%`}}/></div></div>
-                          <div className="agri-crop-actions"><button onClick={() => setSelectedCrop(c)} className="agri-detail-btn"><Eye size={15}/> Details</button><button onClick={() => handleEditCrop(c)} className="agri-record-btn"><FileText size={15}/> Records</button>{userRole === 'admin' && <><button onClick={() => handleEditCrop(c)} className="agri-mini-icon" title="Edit"><Edit3 size={15}/></button><button onClick={() => handleDeleteCrop(c._id)} className="agri-mini-icon danger" title="Delete"><Trash2 size={15}/></button></>}</div>
+                          <div className="agri-crop-name cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setSelectedCrop(c)}>
+                            <div><h4>{c.name}</h4><p>{c.variety || 'Standard Variety'}</p></div>
+                            <span className="agri-season">{c.status === 'Planted' ? 'Planned' : c.status}</span>
+                          </div>
+                          <div className="agri-crop-stats" onClick={() => setSelectedCrop(c)}><span><MapPin size={14}/>{c.field || 'Farm-wide'}</span><span><Scale size={14}/>{c.yield_kg ? `${Number(c.yield_kg).toLocaleString()} kg` : 'Yield pending'}</span></div>
+                          <div className="agri-progress" onClick={() => setSelectedCrop(c)}><div><span>Crop Progress</span><strong>{progress}%</strong></div><div className="agri-progress-track"><span style={{width:`${progress}%`}}/></div></div>
+                          <div className="agri-crop-actions">
+                            <button onClick={() => setSelectedCrop(c)} className="agri-detail-btn"><Eye size={15}/> Details</button>
+                            <button onClick={() => handleEditCrop(c)} className="agri-record-btn"><FileText size={15}/> Records</button>
+                            {userRole === 'admin' && (
+                              <>
+                                <button onClick={() => handleEditCrop(c)} className="agri-mini-icon" title="Edit"><Edit3 size={15}/></button>
+                                <button onClick={() => handleDeleteCrop(c._id)} className="agri-mini-icon danger" title="Delete"><Trash2 size={15}/></button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </article>
                     );
@@ -1837,22 +1826,24 @@ function App() {
           )}
 
           {/* ───────────────── VIEW: MONTHLY SUMMARY ───────────────── */}
+          {/* ───────────────── VIEW: MONTHLY SUMMARY / REPORTS ───────────────── */}
           {activeTab === 'summary' && userRole === 'admin' && (
-            <div className="space-y-6 animate-fade-in">
-              <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-5 ${
-                isDark ? 'border-slate-800' : 'border-slate-200'
-              }`}>
-                <div>
-                  <h3 className="text-base md:text-lg font-black">Monthly Performance Summary</h3>
-                  <p className="text-slate-500 text-xs">Aggregated analytics and development trend data for crops yield and operational ledger budgets.</p>
+            <div className="space-y-6 animate-fade-in flex-1">
+              <div className="agri-page-hero">
+                <div className="agri-page-title">
+                  <div className="agri-title-icon"><BarChart3 size={30}/></div>
+                  <div>
+                    <h2>Monthly Performance Summary</h2>
+                    <p>Aggregated analytics and development trend data for crops yield and operational ledger budgets.</p>
+                  </div>
                 </div>
                 
                 {/* Period Selector */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Analysis Range:</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Analysis Range:</span>
                   <select 
-                    className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 font-medium cursor-pointer ${
-                      isDark ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-[#fdfdfb] border-[#e7e5dc] text-slate-700'
+                    className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 font-bold cursor-pointer ${
+                      isDark ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
                     }`}
                     value={summaryPeriod}
                     onChange={e => setSummaryPeriod(Number(e.target.value))}
@@ -1864,56 +1855,83 @@ function App() {
                 </div>
               </div>
 
-              {/* Hero Stat Bar (Gradient styled banner) */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-5 rounded-2xl border bg-gradient-to-br from-farm-900/10 via-[#0f172a]/20 to-[#0f172a]/40 dark:from-farm-950/20 dark:via-[#0c101b] dark:to-[#090b14] border-farm-500/20 shadow-md">
-                <div className="space-y-1">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Period Income</p>
-                  <h4 className="text-xl font-black text-farm-500 dark:text-farm-400">${formatCurrency(periodIncome)}</h4>
+              {/* Period Stats Grid using .agri-kpi-grid */}
+              <div className="agri-kpi-grid">
+                <div className="agri-kpi-card">
+                  <span className="agri-kpi-icon green"><TrendingUp size={22}/></span>
+                  <div>
+                    <small>Period Income</small>
+                    <strong>${formatCurrency(periodIncome)}</strong>
+                    <p className="up">↗ Live period revenue</p>
+                  </div>
                 </div>
-                <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-800/10 dark:border-slate-800/60 pt-3 sm:pt-0 sm:pl-4">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Period Expense</p>
-                  <h4 className="text-xl font-black text-red-500 dark:text-red-400">${formatCurrency(periodExpense)}</h4>
+
+                <div className="agri-kpi-card">
+                  <span className="agri-kpi-icon wheat"><TrendingDown size={22}/></span>
+                  <div>
+                    <small>Period Expense</small>
+                    <strong>${formatCurrency(periodExpense)}</strong>
+                    <p className="down text-red-500">↘ Direct period outlays</p>
+                  </div>
                 </div>
-                <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-800/10 dark:border-slate-800/60 pt-3 sm:pt-0 sm:pl-4">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Operating Profit</p>
-                  <h4 className={`text-xl font-black ${periodNet >= 0 ? 'text-farm-500 dark:text-farm-400' : 'text-red-500'}`}>
-                    ${formatCurrency(periodNet)}
-                  </h4>
+
+                <div className="agri-kpi-card">
+                  <span className={`agri-kpi-icon ${periodNet >= 0 ? 'green' : 'blue'}`}><Scale size={22}/></span>
+                  <div>
+                    <small>Operating Profit</small>
+                    <strong className={periodNet >= 0 ? 'text-farm-600 dark:text-farm-400' : 'text-red-400'}>
+                      ${formatCurrency(periodNet)}
+                    </strong>
+                    <p>{periodNet >= 0 ? '↗ Period surplus' : '⚠️ Period deficit'}</p>
+                  </div>
                 </div>
-                <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-800/10 dark:border-slate-800/60 pt-3 sm:pt-0 sm:pl-4">
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Operating Margin</p>
-                  <h4 className="text-xl font-black text-amber-500">{periodMargin}%</h4>
+
+                <div className="agri-kpi-card">
+                  <span className="agri-kpi-icon gold"><CheckCircle size={22}/></span>
+                  <div>
+                    <small>Operating Margin</small>
+                    <strong>{periodMargin}%</strong>
+                    <p>Financial efficiency</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="agri-lower-grid">
                 
-                {/* Month-by-Month comparative table */}
-                <div className={`lg:col-span-2 border p-5 rounded-2xl shadow-sm space-y-4 ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                }`}>
-                  <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800/10 dark:border-slate-800 pb-3 flex items-center gap-2">
-                    <BarChart3 size={16} className="text-farm-500" /> Month-by-Month Comparative Trends
-                  </h4>
-                  <div className="overflow-x-auto">
+                {/* Month-by-Month comparative table inside .agri-panel */}
+                <section className="agri-panel">
+                  <div className="agri-panel-heading">
+                    <div>
+                      <h3><BarChart3 size={21}/> Month-by-Month Trends</h3>
+                      <p>Comparative crops and ledger cashflows per month (Click to drill down).</p>
+                    </div>
+                  </div>
+                  
+                  <div className="overflow-x-auto p-5">
                     <table className="w-full text-left border-collapse text-xs md:text-sm">
                       <thead>
-                        <tr className="border-b border-slate-800/10 dark:border-slate-800 pb-2">
-                          <th className="font-bold text-slate-500 pb-2 uppercase text-[9px] tracking-wider">Month</th>
-                          <th className="font-bold text-slate-500 pb-2 uppercase text-[9px] tracking-wider">Crops Planted</th>
-                          <th className="font-bold text-slate-500 pb-2 uppercase text-[9px] tracking-wider">Income</th>
-                          <th className="font-bold text-slate-500 pb-2 uppercase text-[9px] tracking-wider">Expense</th>
-                          <th className="font-bold text-slate-500 pb-2 uppercase text-[9px] tracking-wider text-right">Net Profit</th>
+                        <tr>
+                          <th className="px-4 py-3">Month</th>
+                          <th className="px-4 py-3">Crops Planted</th>
+                          <th className="px-4 py-3">Income</th>
+                          <th className="px-4 py-3">Expense</th>
+                          <th className="px-4 py-3 text-right">Net Profit</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className={`divide-y text-xs md:text-sm ${
+                        isDark ? 'divide-slate-800 text-slate-300' : 'divide-slate-200 text-slate-700'
+                      }`}>
                         {monthlyComparisonRows.map(([month, val]) => (
-                          <tr key={month} className="border-b border-slate-100/50 dark:border-slate-800/50 hover:bg-slate-800/5 transition-colors">
-                            <td className="py-3 font-extrabold text-slate-700 dark:text-slate-300">{month}</td>
-                            <td className="py-3 text-slate-500">{val.cropsCount} cycles</td>
-                            <td className="py-3 text-farm-500 dark:text-farm-400 font-bold">${formatCurrency(val.income)}</td>
-                            <td className="py-3 text-red-500 dark:text-red-400 font-bold">${formatCurrency(val.expense)}</td>
-                            <td className={`py-3 text-right font-black ${val.income - val.expense >= 0 ? 'text-farm-500' : 'text-red-500'}`}>
+                          <tr 
+                            key={month} 
+                            onClick={() => setSelectedMonthRow([month, val])}
+                            className="hover:bg-slate-100/40 dark:hover:bg-slate-900/30 transition-colors animate-fade-in cursor-pointer"
+                          >
+                            <td className="px-4 py-4 font-extrabold text-slate-700 dark:text-slate-300">{month}</td>
+                            <td className="px-4 py-4 text-slate-500">{val.cropsCount} cycles</td>
+                            <td className="px-4 py-4 text-farm-600 dark:text-farm-400 font-bold">${formatCurrency(val.income)}</td>
+                            <td className="px-4 py-4 text-red-500 dark:text-red-400 font-bold">${formatCurrency(val.expense)}</td>
+                            <td className={`px-4 py-4 text-right font-black ${val.income - val.expense >= 0 ? 'text-farm-500' : 'text-red-500'}`}>
                               ${formatCurrency(val.income - val.expense)}
                             </td>
                           </tr>
@@ -1921,18 +1939,24 @@ function App() {
                       </tbody>
                     </table>
                   </div>
-                </div>
+                </section>
 
-                {/* Expense Category Percentage Breakdown */}
-                <div className={`border p-5 rounded-2xl shadow-sm space-y-4 ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                }`}>
-                  <h4 className="font-extrabold text-sm md:text-base border-b border-slate-800/10 dark:border-slate-800 pb-3 flex items-center gap-2">
-                    <TrendingDown size={16} className="text-red-500" /> Period Outflow Breakdown
-                  </h4>
-                  <div className="space-y-4 overflow-y-auto max-h-[300px] pr-1">
+                {/* Expense Category Percentage Breakdown inside .agri-panel */}
+                <section className="agri-panel">
+                  <div className="agri-panel-heading">
+                    <div>
+                      <h3><TrendingDown size={21}/> Outflow Breakdown</h3>
+                      <p>Direct expenditure category analysis (Click to drill down).</p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-5 space-y-4 overflow-y-auto max-h-[350px]">
                     {expenseBreakdown.map(item => (
-                      <div key={item.category} className="space-y-1.5">
+                      <div 
+                        key={item.category} 
+                        onClick={() => setSelectedExpenseCategory(item)}
+                        className="space-y-1.5 cursor-pointer hover:bg-slate-100/40 dark:hover:bg-slate-900/10 p-2 rounded-lg transition-colors"
+                      >
                         <div className="flex justify-between items-center text-xs">
                           <span className="font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[120px]">{item.category}</span>
                           <span className="text-slate-500 font-bold">${formatCurrency(item.amount)} ({item.percentage}%)</span>
@@ -1949,7 +1973,7 @@ function App() {
                       <p className="text-slate-500 text-xs text-center py-8 italic">No expenditures logged during this period range.</p>
                     )}
                   </div>
-                </div>
+                </section>
 
               </div>
 
@@ -2210,7 +2234,180 @@ function App() {
       />
 
       {/* ─── DETAIL POPUPS (Dashboard Stat Card clicks) ─── */}
-      
+
+      {/* Financial Ledger Entry Detail */}
+      <DetailModal
+        open={!!selectedFinance}
+        onClose={() => setSelectedFinance(null)}
+        title={selectedFinance ? `Ledger Entry: ${selectedFinance.category}` : "Ledger Entry"}
+        subtitle={selectedFinance ? `Date: ${selectedFinance.date}` : ""}
+        icon={<FileText size={16} />}
+      >
+        {selectedFinance && (
+          <div className="space-y-4 text-slate-800 dark:text-slate-100">
+            <div className="grid grid-cols-2 gap-3 text-xs md:text-sm">
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><FileText size={10} /> Category</p>
+                <p className="font-extrabold">{selectedFinance.category}</p>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><Scale size={10} /> Ledger Flow</p>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
+                  selectedFinance.type === 'expense' 
+                    ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400' 
+                    : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                }`}>
+                  {selectedFinance.type === 'expense' ? 'Expense' : 'Income'}: ${formatCurrency(selectedFinance.amount)}
+                </span>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><Sprout size={10} /> Associated Crop</p>
+                <p className="font-extrabold">
+                  {crops.find(c => c._id === selectedFinance.crop_id)?.name || 'Farm-wide'}
+                </p>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><Calendar size={10} /> Date Logged</p>
+                <p className="font-extrabold">{selectedFinance.date}</p>
+              </div>
+            </div>
+            {selectedFinance.notes && (
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 space-y-2">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Additional Notes / Specifications</p>
+                <p className="text-xs leading-relaxed font-medium text-slate-600 dark:text-slate-300 italic">"{selectedFinance.notes}"</p>
+              </div>
+            )}
+          </div>
+        )}
+      </DetailModal>
+
+      {/* Care & Tasks Duty Detail */}
+      <DetailModal
+        open={!!selectedTask}
+        onClose={() => setSelectedTask(null)}
+        title={selectedTask ? `Duty Task: ${selectedTask.title}` : "Duty Task"}
+        subtitle={selectedTask ? `Due: ${selectedTask.due_date || 'Ongoing Care'}` : ""}
+        icon={<HeartPulse size={16} />}
+      >
+        {selectedTask && (
+          <div className="space-y-4 text-slate-800 dark:text-slate-100">
+            <div className="grid grid-cols-2 gap-3 text-xs md:text-sm">
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><Users size={10} /> Assigned Worker</p>
+                <p className="font-extrabold">{selectedTask.assigned_to || 'Broadcast Duty'}</p>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><Clock size={10} /> Task Status</p>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
+                  selectedTask.status === 'Completed' 
+                    ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400' 
+                    : 'bg-farm-50 dark:bg-farm-950/20 border-farm-200 dark:border-farm-900/30 text-farm-600 dark:text-farm-400'
+                }`}>
+                  {selectedTask.status}
+                </span>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><AlertTriangle size={10} /> Task Priority</p>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
+                  selectedTask.priority === 'High' 
+                    ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400' 
+                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600'
+                }`}>
+                  {selectedTask.priority}
+                </span>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1"><Calendar size={10} /> Due Date</p>
+                <p className="font-extrabold">{selectedTask.due_date || 'Ongoing care'}</p>
+              </div>
+            </div>
+            {selectedTask.notes && (
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 space-y-2">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Guidelines & Directions</p>
+                <p className="text-xs leading-relaxed font-medium text-slate-600 dark:text-slate-300 italic">"{selectedTask.notes}"</p>
+              </div>
+            )}
+          </div>
+        )}
+      </DetailModal>
+
+      {/* Month Drilled-down Detail */}
+      <DetailModal
+        open={!!selectedMonthRow}
+        onClose={() => setSelectedMonthRow(null)}
+        title={selectedMonthRow ? `Monthly Breakdown: ${selectedMonthRow[0]}` : "Monthly Breakdown"}
+        subtitle={selectedMonthRow ? `Analysis Summary` : ""}
+        icon={<BarChart3 size={16} />}
+      >
+        {selectedMonthRow && (
+          <div className="space-y-4 text-slate-800 dark:text-slate-100">
+            <div className="grid grid-cols-2 gap-3 text-xs md:text-sm">
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Monthly Income</p>
+                <p className="font-extrabold text-farm-600 dark:text-farm-400">${formatCurrency(selectedMonthRow[1].income)}</p>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Monthly Expense</p>
+                <p className="font-extrabold text-red-500">${formatCurrency(selectedMonthRow[1].expense)}</p>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Monthly Net Profit</p>
+                <p className={`font-extrabold ${selectedMonthRow[1].income - selectedMonthRow[1].expense >= 0 ? 'text-farm-600 dark:text-farm-400' : 'text-red-500'}`}>
+                  ${formatCurrency(selectedMonthRow[1].income - selectedMonthRow[1].expense)}
+                </p>
+              </div>
+              <div className="space-y-1 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Crops Cycles Active</p>
+                <p className="font-extrabold">{selectedMonthRow[1].cropsCount} active cycles</p>
+              </div>
+            </div>
+            
+            {/* List crops matching this month */}
+            <div className="space-y-2">
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Crops Planted / Monitored in {selectedMonthRow[0]}</p>
+              <div className="max-h-36 overflow-y-auto space-y-2 pr-1 text-xs">
+                {crops.filter(c => String(c.plant_date || '').startsWith(selectedMonthRow[0].slice(0, 7))).map(c => (
+                  <div key={c._id} className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 flex justify-between items-center">
+                    <span className="font-bold">{c.name} ({c.variety || 'Standard'})</span>
+                    <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-farm-900/20 text-farm-600 dark:text-farm-400 border border-farm-900/30">{c.status}</span>
+                  </div>
+                ))}
+                {crops.filter(c => String(c.plant_date || '').startsWith(selectedMonthRow[0].slice(0, 7))).length === 0 && (
+                  <p className="text-slate-500 italic py-2">No new crop cycle registrations logged in this month.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </DetailModal>
+
+      {/* Expense Category Drilled-down Detail */}
+      <DetailModal
+        open={!!selectedExpenseCategory}
+        onClose={() => setSelectedExpenseCategory(null)}
+        title={selectedExpenseCategory ? `Category: ${selectedExpenseCategory.category}` : "Category Breakdown"}
+        subtitle={selectedExpenseCategory ? `Total: $${formatCurrency(selectedExpenseCategory.amount)}` : ""}
+        icon={<TrendingDown size={16} />}
+      >
+        {selectedExpenseCategory && (
+          <div className="space-y-4 text-slate-800 dark:text-slate-100">
+            <p className="text-xs text-slate-500 dark:text-slate-400">All direct outlays and ledger transactions matching this expenditure category:</p>
+            <div className="max-h-[300px] overflow-y-auto space-y-2.5 pr-1 text-xs">
+              {finance.filter(f => f.type === 'expense' && f.category === selectedExpenseCategory.category).map(f => (
+                <div key={f._id} className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-extrabold text-slate-800 dark:text-white">{f.date}</span>
+                    <span className="font-black text-red-500 dark:text-red-400">${formatCurrency(f.amount)}</span>
+                  </div>
+                  {f.notes && <p className="text-slate-500 leading-relaxed font-semibold italic">"{f.notes}"</p>}
+                  <p className="text-[10px] text-slate-400">Crop sector: {crops.find(c => c._id === f.crop_id)?.name || 'Farm-wide'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </DetailModal>
+
       {/* 0. Individual Crop Detail with timeline */}
       <DetailModal
         open={!!selectedCrop}
