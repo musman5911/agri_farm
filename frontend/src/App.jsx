@@ -49,6 +49,7 @@ import {
   ChevronDown,
   ChevronRight,
   Eye,
+  EyeOff,
   FileText,
   Zap,
   CloudSun,
@@ -135,6 +136,8 @@ function App() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [selectedMonthRow, setSelectedMonthRow] = useState(null);
   const [selectedExpenseCategory, setSelectedExpenseCategory] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [financeFilter, setFinanceFilter] = useState('all');
   const [taskFilter, setTaskFilter] = useState('all');
 
@@ -944,14 +947,23 @@ function App() {
                   Forgot Password?
                 </button>
               </div>
-              <input 
-                type="password" 
-                required
-                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
-                placeholder="••••••••" 
-                value={authForm.password}
-                onChange={e => setAuthForm({...authForm, password: e.target.value})} 
-              />
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  required
+                  className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg pl-4 pr-11 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                  placeholder="••••••••" 
+                  value={authForm.password}
+                  onChange={e => setAuthForm({...authForm, password: e.target.value})} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             
             <button 
@@ -1010,26 +1022,44 @@ function App() {
             
             <div>
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Setup Password</label>
-              <input 
-                type="password" 
-                required
-                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
-                placeholder="Min 6 characters" 
-                value={authForm.password}
-                onChange={e => setAuthForm({...authForm, password: e.target.value})} 
-              />
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  required
+                  className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg pl-4 pr-11 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                  placeholder="Min 6 characters" 
+                  value={authForm.password}
+                  onChange={e => setAuthForm({...authForm, password: e.target.value})} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Confirm Password</label>
-              <input 
-                type="password" 
-                required
-                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
-                placeholder="Confirm your password" 
-                value={authForm.confirmPassword || ''}
-                onChange={e => setAuthForm({...authForm, confirmPassword: e.target.value})} 
-              />
+              <div className="relative">
+                <input 
+                  type={showConfirmPassword ? "text" : "password"} 
+                  required
+                  className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg pl-4 pr-11 py-3 text-sm focus:outline-none focus:border-farm-500 transition-colors"
+                  placeholder="Confirm your password" 
+                  value={authForm.confirmPassword || ''}
+                  onChange={e => setAuthForm({...authForm, confirmPassword: e.target.value})} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             
             <button 
@@ -1194,15 +1224,22 @@ function App() {
                 <button onClick={syncOfflineQueue} className="agri-icon-button agri-queue" title="Sync offline changes"><Clock size={18}/><span>{offlineQueueSize}</span></button>
               )}
               <button className="agri-icon-button" title="Notifications" aria-label="Notifications"><Bell size={19}/></button>
+              
+              <button 
+                className="agri-icon-button" 
+                onClick={() => setIsDark(!isDark)} 
+                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'} 
+                aria-label="Toggle theme"
+              >
+                {isDark ? <Sun size={19}/> : <Moon size={19}/>} 
+              </button>
+
               <button className="agri-profile" onClick={() => setAdminMenuOpen(true)} title="Open administrator panel" aria-label="Open administrator panel">
                 <span className="agri-avatar"><Users size={18}/></span>
                 <span><strong>Welcome - {username}</strong><small>{userRole === 'admin' ? 'Administrator' : 'Worker'}</small></span>
                 <ChevronDown size={17}/>
               </button>
               <button className="agri-icon-button agri-logout" onClick={handleLogout} title="Logout" aria-label="Logout"><LogOut size={18}/></button>
-              <button className="agri-theme-fab" onClick={() => setIsDark(!isDark)} title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'} aria-label="Toggle theme">
-                {isDark ? <Sun size={19}/> : <Moon size={19}/>} 
-              </button>
             </div>
           </header>
 
