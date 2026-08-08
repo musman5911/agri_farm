@@ -1,0 +1,21 @@
+{
+  "short_name": "AgriFarm",
+  "name": "AgriFarm Command Center",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#070b13",
+  "theme_color": "#133c24",
+  "display": "standalone",
+  "orientation": "portrait"
+}
