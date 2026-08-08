@@ -110,60 +110,82 @@ async def build_and_send_custom_digest(
     
     # Construct the personalized email sections
     summary_html = f"""
-    <div style="background-color: #fdfdfb; border: 1px solid #e7e5dc; padding: 18px; border-radius: 10px; margin: 20px 0;">
-        <h3 style="color: #14532d; margin-top: 0; font-size: 14px; font-weight: 700;">Operational Financials Overview</h3>
-        <p style="margin: 8px 0; font-size: 13px; color: #44403c;"><strong>Total Income:</strong> ${total_income:,.2f}</p>
-        <p style="margin: 8px 0; font-size: 13px; color: #44403c;"><strong>Total Expense:</strong> ${total_expense:,.2f}</p>
-        <p style="margin: 8px 0; font-size: 13px; color: #44403c;"><strong>Direct Ledger Balance:</strong> <span style="color: { '#16a34a' if net_profit >= 0 else '#dc2626' }; font-weight: bold;">${net_profit:,.2f}</span></p>
+    <div style="background-color: #f4faf5; border: 1px solid #ccd9c5; padding: 20px; border-radius: 12px; margin: 20px 0;">
+        <h3 style="color: #0b331c; margin-top: 0; margin-bottom: 15px; font-size: 15px; font-weight: 800; border-bottom: 1px solid #ccd9c5; padding-bottom: 8px;">
+            💰 Operational Financials Overview
+        </h3>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; font-size: 13px;">
+            <tr>
+                <td style="padding: 6px 0; color: #55534e;"><strong>Total Income:</strong></td>
+                <td style="padding: 6px 0; text-align: right; color: #165b33; font-weight: bold;">${total_income:,.2f}</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px 0; color: #55534e;"><strong>Total Expense:</strong></td>
+                <td style="padding: 6px 0; text-align: right; color: #dc2626; font-weight: bold;">${total_expense:,.2f}</td>
+            </tr>
+            <tr style="border-top: 1px solid #ccd9c5;">
+                <td style="padding: 10px 0 0 0; color: #0b331c; font-weight: 800;"><strong>Net Ledger Balance:</strong></td>
+                <td style="padding: 10px 0 0 0; text-align: right; color: { '#16a34a' if net_profit >= 0 else '#dc2626' }; font-weight: 900; font-size: 14px;">${net_profit:,.2f}</td>
+            </tr>
+        </table>
     </div>
     """ if include_finance or all_fields else ""
 
     crops_html = ""
     if (include_crops or all_fields) and crops_list:
-        crops_rows = "".join([f"<li><strong>{c.get('name')}</strong> ({c.get('status')}) - Field: {c.get('field', 'N/A')}</li>" for c in crops_list])
+        crops_rows = "".join([f"""
+        <div style="background-color: #ffffff; border: 1px solid #ccd9c5; padding: 10px 14px; border-radius: 8px; margin-bottom: 6px; display: block; overflow: hidden;">
+            <div style="font-size: 13px; color: #1c1917; font-weight: bold; float: left;">{c.get('name')} <span style="font-size: 11px; color: #66645e; font-weight: normal;">({c.get('variety', 'Standard')})</span></div>
+            <div style="font-size: 10px; font-weight: bold; color: #116b35; background-color: #eaf5e7; padding: 1px 6px; border-radius: 10px; border: 1px solid #ccd9c5; text-transform: uppercase; float: right;">{c.get('status')}</div>
+            <div style="clear: both; font-size: 11px; color: #7a837e; margin-top: 4px;">Sector Plot: <strong>{c.get('field', 'General')}</strong></div>
+        </div>
+        """ for c in crops_list])
         crops_html = f"""
-        <div style="margin: 20px 0; border-top: 1px solid #e7e5dc; padding-top: 15px;">
-            <h3 style="color: #14532d; font-size: 14px; font-weight: 700;">Planted Crops Cycle</h3>
-            <ul style="padding-left: 20px; font-size: 13px; color: #44403c; line-height: 1.6;">
-                {crops_rows}
-            </ul>
+        <div style="margin: 20px 0;">
+            <h3 style="color: #0b331c; font-size: 15px; font-weight: 800; margin-bottom: 12px;">🌱 Planted Crops Cycle</h3>
+            {crops_rows}
         </div>
         """
 
     tasks_html = ""
     if (include_tasks or all_fields) and tasks_list:
-        tasks_rows = "".join([f"<li>{t.get('title')} (Due: {t.get('due_date', 'N/A')}) - Status: {t.get('status')}</li>" for t in tasks_list])
+        tasks_rows = "".join([f"""
+        <div style="background-color: #ffffff; border: 1px solid #ccd9c5; padding: 10px 14px; border-radius: 8px; margin-bottom: 6px;">
+            <div style="display: block; overflow: hidden; margin-bottom: 4px;">
+                <div style="font-size: 13px; font-weight: bold; color: #1c1917; float: left;">{t.get('title')}</div>
+                <div style="font-size: 9px; font-weight: bold; color: { '#ef4444' if t.get('priority') == 'High' else '#165b33' }; text-transform: uppercase; background-color: { '#fef2f2' if t.get('priority') == 'High' else '#f4faf5' }; padding: 1px 6px; border-radius: 4px; border: 1px solid { '#fecaca' if t.get('priority') == 'High' else '#ccd9c5' }; float: right;">{t.get('priority')}</div>
+            </div>
+            <div style="font-size: 11px; color: #7a837e; margin-top: 4px;">Due Date: <strong>{t.get('due_date', 'N/A')}</strong> • Status: <strong>{t.get('status')}</strong></div>
+        </div>
+        """ for t in tasks_list])
         tasks_html = f"""
-        <div style="margin: 20px 0; border-top: 1px solid #e7e5dc; padding-top: 15px;">
-            <h3 style="color: #14532d; font-size: 14px; font-weight: 700;">Scheduled Care Rosters</h3>
-            <ul style="padding-left: 20px; font-size: 13px; color: #44403c; line-height: 1.6;">
-                {tasks_rows}
-            </ul>
+        <div style="margin: 20px 0;">
+            <h3 style="color: #0b331c; font-size: 15px; font-weight: 800; margin-bottom: 12px;">📋 Scheduled Care Rosters</h3>
+            {tasks_rows}
         </div>
         """
 
     range_msg = f"filtered from <strong>{start_date}</strong> to <strong>{end_date}</strong>" if (start_date or end_date) else "compiled from lifetime records"
     subject = "AgriFarm Command Center — Scheduled Operations Report"
     html_content = f"""
-    <table align="center" width="500" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 auto;">
+    <table align="center" width="550" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 16px; overflow: hidden; border: 1px solid #ccd9c5;">
       <tr>
-        <td>
-          <div style="font-family: sans-serif; padding: 30px; background-color: #faf9f6; color: #1c1917; border-radius: 16px; border: 1px solid #e2dfdb; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-            <div style="text-align: center; margin-bottom: 25px;">
-                <img src="https://raw.githubusercontent.com/musman5911/agri_farm/main/frontend/public/logo.png" style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid #165b33; object-fit: cover;" alt="Usman Agri Farm Logo" />
-                <h1 style="color: #14532d; font-size: 22px; margin: 10px 0 0 0; font-weight: 800;">Usman Agri Farm</h1>
-                <p style="font-size: 11px; text-transform: uppercase; color: #15803d; letter-spacing: 1.5px; margin: 4px 0 0 0; font-weight: bold;">Advanced Crop Management</p>
-            </div>
-            
-            <h2 style="color: #165b33; border-bottom: 1px solid #e7e5dc; padding-bottom: 10px; margin-top: 0; font-size: 17px; font-weight: 700;">Custom Performance Report</h2>
+        <td style="background-color: #0b331c; padding: 30px 20px; text-align: center; border-bottom: 3px solid #c0a060;">
+            <img src="https://raw.githubusercontent.com/musman5911/agri_farm/main/frontend/public/logo.png" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #c0a060; object-fit: cover; background: #ffffff;" alt="Usman Agri Farm Logo" />
+            <h1 style="color: #ffffff; font-size: 24px; margin: 12px 0 0 0; font-weight: 800; letter-spacing: -0.5px; font-family: sans-serif;">Usman Agri Farm</h1>
+            <p style="font-size: 11px; text-transform: uppercase; color: #a3ccb1; letter-spacing: 2px; margin: 6px 0 0 0; font-weight: bold; font-family: sans-serif;">Advanced Crop Management</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="background-color: #faf9f6; padding: 30px; font-family: sans-serif; color: #1c1917;">
+            <h2 style="color: #116b35; border-bottom: 1px solid #ccd9c5; padding-bottom: 10px; margin-top: 0; font-size: 18px; font-weight: 800;">Custom Performance Report</h2>
             <p style="font-size: 14px; line-height: 1.6; color: #44403c;">This is your customized operational performance statement {range_msg}.</p>
             
             {summary_html}
             {crops_html}
             {tasks_html}
             
-            <p style="font-size: 11.5px; color: #78716c; line-height: 1.5; border-top: 1px solid #e7e5dc; padding-top: 15px; margin-top: 20px;">This custom report was compiled dynamically and dispatched via your Usman Agri Farm Mailer node.</p>
-          </div>
+            <p style="font-size: 11px; color: #78716c; line-height: 1.5; border-top: 1px solid #ccd9c5; padding-top: 15px; margin-top: 25px; text-align: center;">This custom report was compiled dynamically and dispatched via your Usman Agri Farm Mailer node.</p>
         </td>
       </tr>
     </table>
@@ -428,25 +450,27 @@ async def request_profile_code(current_user: dict = Depends(get_current_user)):
     
     subject = "AgriFarm Secure Profile Authorization Code"
     html_content = f"""
-    <table align="center" width="500" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 auto;">
+    <table align="center" width="550" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 16px; overflow: hidden; border: 1px solid #ccd9c5;">
       <tr>
-        <td>
-          <div style="font-family: sans-serif; padding: 30px; background-color: #faf9f6; color: #1c1917; border-radius: 16px; border: 1px solid #e2dfdb; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-            <div style="text-align: center; margin-bottom: 25px;">
-                <img src="https://raw.githubusercontent.com/musman5911/agri_farm/main/frontend/public/logo.png" style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid #165b33; object-fit: cover;" alt="Usman Agri Farm Logo" />
-                <h1 style="color: #14532d; font-size: 22px; margin: 10px 0 0 0; font-weight: 800;">Usman Agri Farm</h1>
-                <p style="font-size: 11px; text-transform: uppercase; color: #15803d; letter-spacing: 1.5px; margin: 4px 0 0 0; font-weight: bold;">Advanced Crop Management</p>
-            </div>
-            
-            <h2 style="color: #165b33; border-bottom: 1px solid #e7e5dc; padding-bottom: 10px; margin-top: 0; font-size: 17px; font-weight: 700;">Secure Profile Authorization</h2>
+        <td style="background-color: #0b331c; padding: 30px 20px; text-align: center; border-bottom: 3px solid #c0a060;">
+            <img src="https://raw.githubusercontent.com/musman5911/agri_farm/main/frontend/public/logo.png" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #c0a060; object-fit: cover; background: #ffffff;" alt="Usman Agri Farm Logo" />
+            <h1 style="color: #ffffff; font-size: 24px; margin: 12px 0 0 0; font-weight: 800; letter-spacing: -0.5px; font-family: sans-serif;">Usman Agri Farm</h1>
+            <p style="font-size: 11px; text-transform: uppercase; color: #a3ccb1; letter-spacing: 2px; margin: 6px 0 0 0; font-weight: bold; font-family: sans-serif;">Advanced Crop Management</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="background-color: #faf9f6; padding: 30px; font-family: sans-serif; color: #1c1917;">
+            <h2 style="color: #116b35; border-bottom: 1px solid #ccd9c5; padding-bottom: 10px; margin-top: 0; font-size: 18px; font-weight: 800;">Secure Profile Authorization</h2>
             <p style="font-size: 14px; line-height: 1.6; color: #44403c;">You requested an administrative authorization code to update your profile (email or password). Use the code below to complete this action:</p>
             
-            <div style="background-color: #fdfdfb; padding: 18px; border-radius: 10px; font-size: 28px; font-weight: bold; text-align: center; color: #165b33; letter-spacing: 4px; margin: 25px 0; border: 1px solid #e7e5dc;">
-                {code}
+            <div style="background-color: #f4faf5; border: 2px dashed #116b35; padding: 25px 20px; border-radius: 12px; margin: 25px 0; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                <p style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #15803d; letter-spacing: 1.5px; font-weight: bold;">Your Secure Verification Code</p>
+                <div style="font-size: 36px; font-weight: 900; color: #0b331c; letter-spacing: 8px; font-family: monospace; line-height: 1;">
+                    {code}
+                </div>
             </div>
             
-            <p style="font-size: 11.5px; line-height: 1.5; color: #78716c;">This code is strictly active for 10 minutes. If you did not authorize this action, secure your account immediately.</p>
-          </div>
+            <p style="font-size: 11px; line-height: 1.5; color: #78716c; text-align: center; border-top: 1px solid #ccd9c5; padding-top: 15px; margin-top: 25px;">This code is active strictly for 10 minutes. If you did not authorize this action, please secure your credentials immediately.</p>
         </td>
       </tr>
     </table>
@@ -629,25 +653,27 @@ async def forgot_password(request: Request, payload: dict):
     # Send email
     subject = "AgriFarm Command Center — Verification Reset Code"
     html_content = f"""
-    <table align="center" width="500" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 auto;">
+    <table align="center" width="550" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 16px; overflow: hidden; border: 1px solid #ccd9c5;">
       <tr>
-        <td>
-          <div style="font-family: sans-serif; padding: 30px; background-color: #faf9f6; color: #1c1917; border-radius: 16px; border: 1px solid #e2dfdb; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-            <div style="text-align: center; margin-bottom: 25px;">
-                <img src="https://raw.githubusercontent.com/musman5911/agri_farm/main/frontend/public/logo.png" style="width: 80px; height: 80px; border-radius: 50%; border: 2px solid #165b33; object-fit: cover;" alt="Usman Agri Farm Logo" />
-                <h1 style="color: #14532d; font-size: 22px; margin: 10px 0 0 0; font-weight: 800;">Usman Agri Farm</h1>
-                <p style="font-size: 11px; text-transform: uppercase; color: #15803d; letter-spacing: 1.5px; margin: 4px 0 0 0; font-weight: bold;">Advanced Crop Management</p>
-            </div>
-            
-            <h2 style="color: #165b33; border-bottom: 1px solid #e7e5dc; padding-bottom: 10px; margin-top: 0; font-size: 17px; font-weight: 700;">Account Password Recovery</h2>
+        <td style="background-color: #0b331c; padding: 30px 20px; text-align: center; border-bottom: 3px solid #c0a060;">
+            <img src="https://raw.githubusercontent.com/musman5911/agri_farm/main/frontend/public/logo.png" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #c0a060; object-fit: cover; background: #ffffff;" alt="Usman Agri Farm Logo" />
+            <h1 style="color: #ffffff; font-size: 24px; margin: 12px 0 0 0; font-weight: 800; letter-spacing: -0.5px; font-family: sans-serif;">Usman Agri Farm</h1>
+            <p style="font-size: 11px; text-transform: uppercase; color: #a3ccb1; letter-spacing: 2px; margin: 6px 0 0 0; font-weight: bold; font-family: sans-serif;">Advanced Crop Management</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="background-color: #faf9f6; padding: 30px; font-family: sans-serif; color: #1c1917;">
+            <h2 style="color: #116b35; border-bottom: 1px solid #ccd9c5; padding-bottom: 10px; margin-top: 0; font-size: 18px; font-weight: 800;">Account Password Recovery</h2>
             <p style="font-size: 14px; line-height: 1.6; color: #44403c;">We received a request to recover your administrator account password. Please enter the verification recovery code below to authorize your reset:</p>
             
-            <div style="background-color: #fdfdfb; padding: 18px; border-radius: 10px; font-size: 28px; font-weight: bold; text-align: center; color: #165b33; letter-spacing: 4px; margin: 25px 0; border: 1px solid #e7e5dc;">
-                {code}
+            <div style="background-color: #f4faf5; border: 2px dashed #116b35; padding: 25px 20px; border-radius: 12px; margin: 25px 0; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                <p style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #15803d; letter-spacing: 1.5px; font-weight: bold;">Your Secure Verification Code</p>
+                <div style="font-size: 36px; font-weight: 900; color: #0b331c; letter-spacing: 8px; font-family: monospace; line-height: 1;">
+                    {code}
+                </div>
             </div>
             
-            <p style="font-size: 11.5px; line-height: 1.5; color: #78716c;">This code is active strictly for 10 minutes. If you did not authorize this action, please secure your credentials immediately.</p>
-          </div>
+            <p style="font-size: 11px; line-height: 1.5; color: #78716c; text-align: center; border-top: 1px solid #ccd9c5; padding-top: 15px; margin-top: 25px;">This code is active strictly for 10 minutes. If you did not authorize this action, please secure your credentials immediately.</p>
         </td>
       </tr>
     </table>
