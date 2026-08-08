@@ -123,7 +123,7 @@ function App() {
   const [authForm, setAuthForm] = useState({ username: '', email: '', password: '', confirmPassword: '' });
   
   const [cropForm, setCropForm] = useState({ name: '', variety: '', status: 'Growing', plant_date: '', harvest_date: '', field: '', yield_kg: '', notes: '' });
-  const [finForm, setFinForm] = useState({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' });
+  const [finForm, setFinForm] = useState({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '', date: new Date().toISOString().split('T')[0] });
   const [taskForm, setTaskForm] = useState({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' });
   const [newWorkerForm, setNewWorkerForm] = useState({ username: '', password: '', role: 'worker' });
 
@@ -163,6 +163,8 @@ function App() {
     showAlert(`📶 Connection restored! Syncing ${queue.length} offline changes to server...`);
     
     let successCount = 0;
+    const failedItems = [];
+    
     for (const req of queue) {
       try {
         await api.default.request({
@@ -173,12 +175,18 @@ function App() {
         successCount++;
       } catch (err) {
         console.error("Failed to replay offline request:", req, err);
+        failedItems.push(req);
       }
     }
     
-    localStorage.setItem('offline_request_queue', '[]');
-    setOfflineQueueSize(0);
-    showAlert(`✅ Synced! ${successCount} offline logs successfully saved in database.`);
+    localStorage.setItem('offline_request_queue', JSON.stringify(failedItems));
+    setOfflineQueueSize(failedItems.length);
+    
+    if (failedItems.length > 0) {
+      showAlert(`⚠️ Synced: ${successCount} logs saved. ${failedItems.length} changes failed and will be retried when online.`, true);
+    } else {
+      showAlert(`✅ Synced! All ${successCount} offline logs successfully saved in database.`);
+    }
     refreshData();
   };
 
@@ -514,7 +522,7 @@ function App() {
         await api.addFinance(payload);
         showAlert("Financial transaction successfully recorded!");
       }
-      setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' });
+      setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '', date: new Date().toISOString().split('T')[0] });
       setEditingFinance(null);
       setShowFinanceModal(false);
       refreshData();
@@ -530,7 +538,8 @@ function App() {
       amount: f.amount.toString(),
       type: f.type,
       crop_id: f.crop_id || 'farm-wide',
-      notes: f.notes || ''
+      notes: f.notes || '',
+      date: f.date || new Date().toISOString().split('T')[0]
     });
     setShowFinanceModal(true);
   };
@@ -1592,7 +1601,7 @@ function App() {
                   </div>
                 </div>
                 <button 
-                  onClick={() => { setEditingFinance(null); setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' }); setShowFinanceModal(true); }}
+                  onClick={() => { setEditingFinance(null); setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '', date: new Date().toISOString().split('T')[0] }); setShowFinanceModal(true); }}
                   className="agri-primary-action"
                 >
                   <Plus size={19}/> Log Entry
@@ -2201,6 +2210,11 @@ function App() {
               </div>
 
               <div>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Transaction Date *</label>
+                <input required type="date" className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium" value={finForm.date || ''} onChange={e => setFinForm({...finForm, date: e.target.value})} />
+              </div>
+
+              <div>
                 <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Associate with Crop Sector</label>
                 <select 
                   className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-medium cursor-pointer"
@@ -2506,8 +2520,8 @@ function App() {
                     style={{ 
                       width: `${
                         selectedCrop.status === 'Planted' ? '0%' :
-                        selectedCrop.status === 'Growing' ? '33%' :
-                        selectedCrop.status === 'Harvesting' ? '66%' :
+                        selectedCrop.status === 'Growing' ? '58%' :
+                        selectedCrop.status === 'Harvesting' ? '82%' :
                         selectedCrop.status === 'Completed' ? '100%' : '0%'
                       }` 
                     }}
