@@ -35,7 +35,7 @@ def run():
     import uvicorn
     
     print(f"🚀 [Startup] Launching Uvicorn FastAPI backend on 0.0.0.0:{port}...")
-    uvicorn.run("main:app", host="0.0.0.0", port=int(port), app_dir="backend", reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=int(port), reload=False)
 
 if __name__ == "__main__":
     run()
