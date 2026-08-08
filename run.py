@@ -15,7 +15,8 @@ def run():
         import uvicorn
         import fastapi
         import pymongo
-        print("✅ [Startup] All core dependencies (FastAPI, Uvicorn, PyMongo) are already verified. Skipping pip setup.")
+        import motor
+        print("✅ [Startup] All core dependencies (FastAPI, Uvicorn, PyMongo, Motor) are already verified. Skipping pip setup.")
     except ImportError:
         print("📦 [Startup] Installing and verifying Python backend dependencies...")
         try:

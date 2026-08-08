@@ -1,6 +1,7 @@
+pymongo>=4.0.0
+motor>=3.0.0
 fastapi
 uvicorn
-motor
 python-jose[cryptography]
 passlib
 bcrypt<4.0.0
@@ -9,3 +10,4 @@ python-dotenv
 mongomock
 mongomock-motor
 email-validator
+requests
