@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, Literal
 
 class User(BaseModel):
@@ -7,7 +7,7 @@ class User(BaseModel):
     role: Literal["admin", "worker"] = "worker"
     password: str
 
-    @field_validator('email', mode='before')
+    @validator('email', pre=True)
     @classmethod
     def check_empty_email(cls, v):
         if v == "" or v is None:
@@ -19,7 +19,7 @@ class UserOut(BaseModel):
     email: Optional[EmailStr] = None
     role: Literal["admin", "worker"]
 
-    @field_validator('email', mode='before')
+    @validator('email', pre=True)
     @classmethod
     def check_empty_email(cls, v):
         if v == "" or v is None:
