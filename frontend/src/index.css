@@ -121,7 +121,7 @@ body {
   radial-gradient(700px 360px at 78% 2%, rgba(238,231,193,.55), transparent 65%),
   linear-gradient(#faf8f1,#f5f2e9); }
 
-.agri-image02-header { height:76px; position:relative; z-index:20; display:flex; align-items:center; justify-content:space-between; padding:8px 28px; background:#fffdf7; border-bottom:1px solid #e9e4d8; box-shadow:0 3px 18px rgba(40,55,35,.06); overflow:hidden; }
+.agri-image02-header { height:78px; flex:0 0 78px; position:relative; z-index:30; display:flex; align-items:center; justify-content:space-between; padding:8px clamp(14px, 3vw, 38px); background:#fffdf7; border-bottom:1px solid #e9e4d8; box-shadow:0 3px 18px rgba(40,55,35,.06); overflow:visible; }
 .agri-image02-header::after { content:""; position:absolute; right:0; bottom:-32px; width:62%; height:72px; background-image:linear-gradient(90deg,rgba(255,255,255,.92),rgba(255,255,255,.15)),url('/crop_cards/field_header.jpg'); background-size:cover; background-position:center; opacity:.92; z-index:-1; clip-path:ellipse(70% 70% at 70% 0%); }
 .agri-header-brand { display:flex; align-items:center; gap:12px; min-width:260px; }
 .agri-brand-logo { width:54px; height:54px; border-radius:50%; object-fit:contain; background:#fff; border:2px solid #dbe8d6; box-shadow:0 4px 12px rgba(31,85,45,.12); }
@@ -334,14 +334,7 @@ body {
   flex-direction: column;
 }
 
-.agri-image02-header {
-  height: 78px;
-  flex: 0 0 78px;
-  padding: 8px clamp(14px, 3vw, 38px);
-  overflow: visible;
-  position: relative;
-  z-index: 30;
-}
+
 
 .agri-header-actions {
   display: flex;
