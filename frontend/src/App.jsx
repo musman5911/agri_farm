@@ -1196,7 +1196,7 @@ function App() {
               <button className="agri-icon-button" title="Notifications" aria-label="Notifications"><Bell size={19}/></button>
               <button className="agri-profile" onClick={() => setAdminMenuOpen(true)} title="Open administrator panel" aria-label="Open administrator panel">
                 <span className="agri-avatar"><Users size={18}/></span>
-                <span><strong>{username}</strong><small>{userRole === 'admin' ? 'Administrator' : 'Worker'}</small></span>
+                <span><strong>Welcome - {username}</strong><small>{userRole === 'admin' ? 'Administrator' : 'Worker'}</small></span>
                 <ChevronDown size={17}/>
               </button>
               <button className="agri-icon-button agri-logout" onClick={handleLogout} title="Logout" aria-label="Logout"><LogOut size={18}/></button>
@@ -1252,24 +1252,11 @@ function App() {
           {/* ───────────────── VIEW: DASHBOARD ───────────────── */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6 animate-fade-in flex-1">
-              <div className="agri-page-hero">
-                <div className="agri-page-title">
-                  <div className="agri-title-icon"><LayoutDashboard size={30}/></div>
-                  <div>
-                    <h2>Telemetry Operations Dashboard</h2>
-                    <p>Welcome back, <strong>{username}</strong> • System indicators and controls are fully operational.</p>
-                  </div>
-                </div>
-                <span className="agri-primary-action bg-farm-600/10 text-farm-600 dark:text-farm-400 border border-farm-500/20 px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 shrink-0">
-                  <ShieldCheck size={16} /> System Secure
-                </span>
-              </div>
-
-              {/* Status Grid Cards using .agri-kpi-grid */}
-              <div className="agri-kpi-grid">
+              {/* Status Grid Cards using grid-cols-3 */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div 
                   onClick={() => setModal('crops_planted')}
-                  className="agri-kpi-card cursor-pointer"
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
                 >
                   <span className="agri-kpi-icon green"><Sprout size={22}/></span>
                   <div>
@@ -1281,7 +1268,7 @@ function App() {
 
                 <div 
                   onClick={() => setModal('ledger_profit')}
-                  className="agri-kpi-card cursor-pointer"
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
                 >
                   <span className={`agri-kpi-icon ${netProfit >= 0 ? 'green' : 'wheat'}`}><TrendingUp size={22}/></span>
                   <div>
@@ -1295,25 +1282,13 @@ function App() {
 
                 <div 
                   onClick={() => setModal('pending_duties')}
-                  className="agri-kpi-card cursor-pointer"
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
                 >
                   <span className="agri-kpi-icon blue"><CheckSquare size={22}/></span>
                   <div>
                     <small>Duties Scheduled</small>
                     <strong>{tasks.filter(t => t.status === 'Pending').length}</strong>
                     <p>{tasks.filter(t => t.status === 'Completed').length} Duties completed</p>
-                  </div>
-                </div>
-
-                <div 
-                  onClick={() => setModal('worker_operatives')}
-                  className="agri-kpi-card cursor-pointer"
-                >
-                  <span className="agri-kpi-icon gold"><Users size={22}/></span>
-                  <div>
-                    <small>Authorized Users</small>
-                    <strong>{users.length || 1}</strong>
-                    <p>Active worker logins</p>
                   </div>
                 </div>
               </div>

@@ -26,14 +26,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import * as api from '../api';
 import { useConfirm } from './ConfirmProvider';
 
-const ADMIN_TABS = [
-  { id: 'general', icon: Settings, label: 'General' },
-  { id: 'users', icon: Users, label: 'Workers' },
-  { id: 'automations', icon: Clock, label: 'Automations' },
-  { id: 'reports', icon: FileText, label: 'Reports' },
-  { id: 'backup', icon: Database, label: 'Backup' },
-];
-
 export default function AdminMenu({
   open,
   onClose,
@@ -52,6 +44,13 @@ export default function AdminMenu({
 }) {
   const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState('general');
+  const ADMIN_TABS = [
+    { id: 'general', icon: Settings, label: 'General' },
+    { id: 'users', icon: Users, label: `Authorized Users (${users.length || 1})` },
+    { id: 'automations', icon: Clock, label: 'Automations' },
+    { id: 'reports', icon: FileText, label: 'Reports' },
+    { id: 'backup', icon: Database, label: 'Backup' },
+  ];
   const [submitting, setSubmitting] = useState(false);
   const [actionId, setActionId] = useState(null);
 
