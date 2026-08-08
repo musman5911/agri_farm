@@ -603,3 +603,294 @@ body {
     z-index: 35 !important;
   }
 }
+
+
+/* ============================================================
+   MOBILE-SPECIFIC SCALE DOWN (640px and below)
+   Makes text, icons, headings, and popups perfectly compact.
+   ============================================================ */
+@media (max-width: 640px) {
+  /* 1. Global typography scale down */
+  body, .agri-image02-app, .agri-main-content {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+  
+  /* 2. Page titles & headers */
+  .agri-page-title h2 {
+    font-size: 18px !important;
+    letter-spacing: -0.02em !important;
+  }
+  .agri-page-title p {
+    font-size: 10px !important;
+    margin-top: 2px !important;
+  }
+  .agri-title-icon {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 10px !important;
+  }
+  .agri-title-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  
+  /* 3. Panel Headings */
+  .agri-panel-heading {
+    padding: 10px 12px !important;
+  }
+  .agri-panel-heading h3 {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+  }
+  .agri-panel-heading h3 svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  .agri-panel-heading p {
+    font-size: 9px !important;
+  }
+
+  /* 4. KPI Cards */
+  .agri-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .agri-kpi-card {
+    min-height: 72px !important;
+    padding: 10px !important;
+    border-radius: 12px !important;
+    gap: 8px !important;
+  }
+  .agri-kpi-icon {
+    width: 32px !important;
+    height: 32px !important;
+    flex: 0 0 32px !important;
+    border-radius: 8px !important;
+  }
+  .agri-kpi-icon svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+  .agri-kpi-card small {
+    font-size: 10px !important;
+    margin-bottom: 2px !important;
+  }
+  .agri-kpi-card strong {
+    font-size: 15px !important;
+  }
+  .agri-kpi-card strong em {
+    font-size: 10px !important;
+  }
+  .agri-kpi-card p {
+    font-size: 8px !important;
+    margin-top: 2px !important;
+  }
+
+  /* 5. Crop cards and grids */
+  .agri-crop-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 10px !important;
+  }
+  .agri-crop-card {
+    border-radius: 12px !important;
+  }
+  .agri-crop-photo {
+    height: 96px !important;
+  }
+  .agri-crop-card-body {
+    padding: 15px 10px 10px !important;
+  }
+  .agri-crop-name h4 {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+  }
+  .agri-crop-name p {
+    font-size: 9px !important;
+  }
+  .agri-season {
+    font-size: 8px !important;
+  }
+  .agri-crop-stats {
+    margin: 8px 0 !important;
+    gap: 4px !important;
+    font-size: 10px !important;
+  }
+  .agri-crop-stats svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+  .agri-progress {
+    margin-top: 4px !important;
+  }
+  .agri-progress-track {
+    height: 5px !important;
+  }
+  .agri-progress > div:first-child {
+    font-size: 8px !important;
+  }
+  .agri-crop-actions {
+    margin-top: 8px !important;
+    gap: 4px !important;
+  }
+  .agri-detail-btn, .agri-record-btn, .agri-mini-icon {
+    min-height: 26px !important;
+    border-radius: 6px !important;
+    font-size: 9px !important;
+    gap: 3px !important;
+  }
+  .agri-detail-btn svg, .agri-record-btn svg, .agri-mini-icon svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+  .agri-mini-icon {
+    width: 26px !important;
+  }
+
+  /* 6. Form Fields & Action buttons on mobile */
+  input, select, textarea {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+    border-radius: 8px !important;
+  }
+  .agri-primary-action {
+    min-height: 36px !important;
+    padding: 0 12px !important;
+    font-size: 11px !important;
+    border-radius: 8px !important;
+    width: auto !important;
+    margin-left: auto;
+  }
+  .agri-primary-action svg {
+    width: 13px !important;
+    height: 13px !important;
+  }
+
+  /* 7. Popups & Modals on mobile */
+  /* Target the Modal container elements */
+  .relative.w-full.max-w-2xl, .relative.w-full.max-w-lg, .relative.w-full.max-w-md {
+    max-height: 90vh !important;
+    border-radius: 16px !important;
+  }
+  .relative.w-full.max-w-2xl > div:first-child, .relative.w-full.max-w-lg > div:first-child {
+    padding: 12px 16px !important;
+  }
+  .relative.w-full.max-w-2xl > div:first-child h3, .relative.w-full.max-w-lg > div:first-child h3 {
+    font-size: 14px !important;
+  }
+  .relative.w-full.max-w-2xl > div:first-child p, .relative.w-full.max-w-lg > div:first-child p {
+    font-size: 9px !important;
+  }
+  
+  /* Scrollable modal content area inside popups */
+  .flex-1.overflow-y-auto {
+    padding: 12px 16px !important;
+  }
+  .space-y-6 > div.p-5, .space-y-4 > div.p-5 {
+    padding: 12px !important;
+    border-radius: 12px !important;
+    margin: 0 !important;
+  }
+  
+  /* Lists inside Modals */
+  .divide-y > div {
+    padding: 10px !important;
+  }
+  .divide-y p {
+    font-size: 11px !important;
+  }
+  .divide-y span {
+    font-size: 8px !important;
+  }
+  
+  /* Activity Row styling on mobile */
+  .agri-activity-row {
+    min-height: 46px !important;
+    gap: 8px !important;
+    padding: 6px 0 !important;
+  }
+  .agri-activity-icon {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  .agri-activity-icon svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+  .agri-activity-row strong {
+    font-size: 11px !important;
+  }
+  .agri-activity-row small {
+    font-size: 9px !important;
+  }
+  .agri-activity-row b {
+    padding: 3px 6px !important;
+    font-size: 8px !important;
+    border-radius: 5px !important;
+  }
+
+  /* 8. Weather & Farming tip block on mobile */
+  .agri-lower-grid {
+    gap: 10px !important;
+    margin-top: 10px !important;
+  }
+  .agri-weather-row {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    padding: 10px !important;
+  }
+  .agri-weather-temp {
+    padding: 8px !important;
+    border-radius: 10px !important;
+  }
+  .agri-weather-temp strong {
+    font-size: 18px !important;
+  }
+  .agri-tip {
+    padding: 10px !important;
+    border-radius: 10px !important;
+  }
+  .agri-tip strong {
+    font-size: 10px !important;
+  }
+  .agri-tip p {
+    font-size: 9px !important;
+  }
+  .agri-quick-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    padding: 8px !important;
+    gap: 6px !important;
+  }
+  .agri-quick-grid button {
+    min-height: 48px !important;
+    border-radius: 10px !important;
+    font-size: 8px !important;
+    gap: 3px !important;
+  }
+  .agri-quick-grid button svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  /* 9. Header icons and logout sizes */
+  .agri-icon-button, .agri-theme-fab {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 8px !important;
+  }
+  .agri-icon-button svg, .agri-theme-fab svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  .agri-brand-logo {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  /* 10. Forms / select inputs label scaling */
+  label {
+    font-size: 8px !important;
+    margin-bottom: 2px !important;
+  }
+}
