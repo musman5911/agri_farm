@@ -10,13 +10,19 @@ def run():
     port = os.getenv("PORT", "8000")
     print(f"🚀 [Startup] Preparing single-service production launch on port {port}...")
     
-    # 1. Auto-install Python dependencies in the writable user space (--user)
+    # 1. Auto-install Python dependencies
     print("📦 [Startup] Installing and verifying Python backend dependencies...")
     try:
-        subprocess.run("python -m pip install --user -r backend/requirements.txt", shell=True, check=True)
+        # Try standard install first (correct for virtualenv)
+        subprocess.run("python -m pip install -r backend/requirements.txt", shell=True, check=True)
         print("✅ [Startup] Python dependencies successfully verified.")
     except Exception as e:
-        print(f"⚠️ [Startup] Warning: Python dependency installation had issues: {e}")
+        print(f"⚠️ [Startup] Standard install had issues ({e}), trying --user fallback...")
+        try:
+            subprocess.run("python -m pip install --user -r backend/requirements.txt", shell=True, check=True)
+            print("✅ [Startup] Python dependencies successfully verified via user-space.")
+        except Exception as e_user:
+            print(f"❌ [Startup] Critical: Dependency installation failed: {e_user}")
     
     # 2. Add backend to path and start Uvicorn
     sys.path.append(os.path.abspath("backend"))
