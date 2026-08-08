@@ -1226,21 +1226,19 @@ function App() {
           <nav className="agri-top-nav" aria-label="Primary navigation">
             <div className="agri-top-nav-scroll">
               {[
-                ['dashboard','Dashboard',Home,'dashboard'],
-                ['crops','Crop Manager',Sprout,'crops'],
-                ['crops','Fields & Lands',MapPin,'fields'],
-                ['crops','Seeds & Inputs',Leaf,'seeds'],
-                ['tasks','Fertilizer & Care',HeartPulse,'care'],
-                ['tasks','Irrigation',Droplets,'irrigation'],
-                ['summary','Reports',BarChart3,'reports']
-              ].map(([id,label,Icon,navKey]) => (
+                ['dashboard', 'Dashboard', Home, 'dashboard'],
+                ['crops', 'Crop Manager', Sprout, 'crops'],
+                ['finance', 'Financial Ledger', FileText, 'finance'],
+                ['tasks', 'Care & Tasks', HeartPulse, 'tasks'],
+                ['summary', 'Reports', BarChart3, 'summary']
+              ].map(([id, label, Icon, navKey]) => (
                 <button
                   key={navKey}
                   type="button"
                   className={`agri-nav-link ${activeNav === navKey ? 'active' : ''}`}
                   onClick={() => {
-                    if (navKey === 'reports' && userRole !== 'admin') {
-                      navigateTo('finance', 'reports');
+                    if (navKey === 'summary' && userRole !== 'admin') {
+                      showAlert("Access Denied: Only administrators can access the Reports/Summary panel.", true);
                     } else {
                       navigateTo(id, navKey);
                     }
