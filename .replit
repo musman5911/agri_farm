@@ -1,1 +1,4 @@
-run = "python run.py"
+run = "python3 run.py"
+
+[deployment]
+run = "python3 run.py"
