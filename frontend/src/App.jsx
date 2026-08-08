@@ -1548,291 +1548,291 @@ function App() {
 
           {/* ───────────────── VIEW: FINANCIAL LEDGER ───────────────── */}
           {activeTab === 'finance' && (
-            <div className="space-y-6 animate-fade-in">
-              <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-5 ${
-                isDark ? 'border-slate-800' : 'border-slate-200'
-              }`}>
-                <div>
-                  <h3 className="text-base md:text-lg font-black">Financial Ledger Book</h3>
-                  <p className="text-slate-500 text-xs">Verify seed logistics, operational fuels, wages, and harvest sales ledger flows.</p>
+            <div className="space-y-6 animate-fade-in flex-1">
+              <div className="agri-page-hero">
+                <div className="agri-page-title">
+                  <div className="agri-title-icon"><FileText size={30}/></div>
+                  <div>
+                    <h2>Financial Ledger Book</h2>
+                    <p>Verify seed logistics, operational fuels, wages, and harvest sales ledger flows.</p>
+                  </div>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <select 
-                    className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 ${
-                      isDark ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
-                    }`}
-                    value={financeFilter}
-                    onChange={e => setFinanceFilter(e.target.value)}
-                  >
-                    <option value="all">All Flows</option>
-                    <option value="income">Revenue Only</option>
-                    <option value="expense">Expense Only</option>
-                  </select>
-                  <button 
-                    onClick={() => { setEditingFinance(null); setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' }); setShowFinanceModal(true); }}
-                    className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer transition-transform hover:scale-105 ml-auto shrink-0"
-                  >
-                    <Plus size={16} /> Log Entry
-                  </button>
-                </div>
+                <button 
+                  onClick={() => { setEditingFinance(null); setFinForm({ category: '', amount: '', type: 'expense', crop_id: 'farm-wide', notes: '' }); setShowFinanceModal(true); }}
+                  className="agri-primary-action"
+                >
+                  <Plus size={19}/> Log Entry
+                </button>
               </div>
 
               {/* Financial Breakdown Panel */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                }`}>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Gross Income</p>
-                  <h4 className="text-2xl font-black text-farm-600 dark:text-farm-400 mt-1">${formatCurrency(totalIncome)}</h4>
+              <div className="agri-kpi-grid">
+                <div className="agri-kpi-card">
+                  <span className="agri-kpi-icon green"><TrendingUp size={22}/></span>
+                  <div>
+                    <small>Gross Income</small>
+                    <strong>${formatCurrency(totalIncome)}</strong>
+                    <p className="up">↗ Live revenue</p>
+                  </div>
                 </div>
-                <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                }`}>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Expenditures</p>
-                  <h4 className="text-2xl font-black text-red-400 mt-1">${formatCurrency(totalExpense)}</h4>
+                <div className="agri-kpi-card">
+                  <span className="agri-kpi-icon wheat"><TrendingDown size={22}/></span>
+                  <div>
+                    <small>Expenditures</small>
+                    <strong>${formatCurrency(totalExpense)}</strong>
+                    <p className="down text-red-500">↘ Direct outlays</p>
+                  </div>
                 </div>
-                <div className={`border p-5 rounded-2xl shadow-sm ${
-                  isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                }`}>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Net profit margin</p>
-                  <h4 className={`text-2xl font-black mt-1 ${netProfit >= 0 ? 'text-farm-600 dark:text-farm-400' : 'text-red-400'}`}>
-                    ${formatCurrency(netProfit)}
-                  </h4>
+                <div className="agri-kpi-card">
+                  <span className={`agri-kpi-icon ${netProfit >= 0 ? 'green' : 'blue'}`}><Scale size={22}/></span>
+                  <div>
+                    <small>Net Profit Margin</small>
+                    <strong className={netProfit >= 0 ? 'text-farm-600 dark:text-farm-400' : 'text-red-400'}>
+                      ${formatCurrency(netProfit)}
+                    </strong>
+                    <p>{netProfit >= 0 ? '↗ Healthy balance' : '⚠️ Deficit status'}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Finance list table */}
-              <div className={`border rounded-2xl overflow-hidden shadow-sm ${
-                isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-              }`}>
-                <div className="overflow-x-auto">
+              {/* Finance list table inside .agri-panel */}
+              <section className="agri-panel">
+                <div className="agri-panel-heading">
+                  <div>
+                    <h3><FileText size={21}/> Transaction History</h3>
+                    <p>Track direct field expenses and agricultural sales.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <select 
+                      className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 cursor-pointer ${
+                        isDark ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                      }`}
+                      value={financeFilter}
+                      onChange={e => setFinanceFilter(e.target.value)}
+                    >
+                      <option value="all">All Flows</option>
+                      <option value="income">Revenue Only</option>
+                      <option value="expense">Expense Only</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto p-5">
                   <table className="w-full text-left border-collapse">
-                    <thead className={`text-slate-500 text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-b ${
-                      isDark ? 'bg-[#121b2d] border-slate-800' : 'bg-slate-50 border-slate-200'
-                    }`}>
+                    <thead>
                       <tr>
-                        <th className="px-6 py-4">Date</th>
-                        <th className="px-6 py-4">Description</th>
-                        <th className="px-6 py-4">Sector/Crop Link</th>
-                        <th className="px-6 py-4 text-right">Ledger Flow</th>
-                        <th className="px-6 py-4 text-right">Actions</th>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Description</th>
+                        <th className="px-4 py-3">Sector / Crop Link</th>
+                        <th className="px-4 py-3 text-right">Ledger Flow</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className={`divide-y text-xs md:text-sm ${
                       isDark ? 'divide-slate-800 text-slate-300' : 'divide-slate-200 text-slate-700'
                     }`}>
                       {finance.length === 0 ? (
-                        <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">Financial ledger contains no logs.</td></tr>
+                        <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">Financial ledger contains no logs.</td></tr>
                       ) : filteredFinance.length === 0 ? (
-                        <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">No logs found matching this ledger flow filter.</td></tr>
+                        <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">No logs found matching this ledger flow filter.</td></tr>
                       ) : filteredFinance.map(f => {
                         const linkedCrop = crops.find(c => c._id === f.crop_id);
                         return (
-                        <tr key={f._id} className="hover:bg-slate-100/40 dark:hover:bg-slate-900/30 transition-colors animate-fade-in">
-                          <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{f.date}</td>
-                          <td className="px-6 py-4">
-                            <div className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{f.category}</div>
-                            {f.notes && <div className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs truncate mt-0.5">{f.notes}</div>}
-                          </td>
-                          <td className="px-6 py-4">
-                            {linkedCrop ? (
-                              <span className="inline-flex items-center gap-1 bg-farm-900/20 text-farm-500 dark:text-farm-400 border border-farm-500/10 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                                <Sprout size={10} /> {linkedCrop.name}
+                          <tr key={f._id} className="hover:bg-slate-100/40 dark:hover:bg-slate-900/30 transition-colors animate-fade-in">
+                            <td className="px-4 py-4 text-slate-500 whitespace-nowrap">{f.date}</td>
+                            <td className="px-4 py-4">
+                              <div className="font-extrabold text-slate-800 dark:text-slate-100">{f.category}</div>
+                              {f.notes && <div className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs truncate mt-0.5">{f.notes}</div>}
+                            </td>
+                            <td className="px-4 py-4">
+                              {linkedCrop ? (
+                                <span className="inline-flex items-center gap-1 bg-farm-900/20 text-farm-600 dark:text-farm-400 border border-farm-900/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                                  <Sprout size={10} /> {linkedCrop.name}
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 dark:text-slate-400 text-xs">Farm-wide</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-4 text-right whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${
+                                f.type === 'expense' 
+                                  ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400' 
+                                  : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                              }`}>
+                                {f.type === 'expense' ? <ArrowDownRight size={12} /> : <ArrowUpRight size={12} />}
+                                ${formatCurrency(f.amount)}
                               </span>
-                            ) : (
-                              <span className="text-slate-500 dark:text-slate-400 text-xs">Farm-wide</span>
-                            )}
-                          </td>
-                          <td className={`px-6 py-4 text-right font-extrabold whitespace-nowrap ${f.type === 'expense' ? 'text-red-400' : 'text-farm-500 dark:text-farm-400'}`}>
-                            <div className="inline-flex items-center gap-1">
-                              {f.type === 'expense' ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
-                              ${formatCurrency(f.amount)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right whitespace-nowrap">
-                            {userRole === 'admin' ? (
-                              <div className="inline-flex gap-1">
-                                <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-farm-500 rounded-lg cursor-pointer" title="Edit Log">
-                                  <Edit3 size={14} />
-                                </button>
-                                <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-400 rounded-lg cursor-pointer" title="Delete Log">
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-slate-500 dark:text-slate-400 text-xs italic">Read-only</span>
-                            )}
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="px-4 py-4 text-right whitespace-nowrap">
+                              {userRole === 'admin' ? (
+                                <div className="inline-flex gap-1 justify-end">
+                                  <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-farm-500 rounded-lg cursor-pointer transition-colors" title="Edit Log">
+                                    <Edit3 size={14} />
+                                  </button>
+                                  <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-400 rounded-lg cursor-pointer transition-colors" title="Delete Log">
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-slate-500 dark:text-slate-400 text-xs italic">Read-only</span>
+                              )}
+                            </td>
+                          </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
-              </div>
 
-              {/* Finance Pagination Controls */}
-              <div className="flex justify-between items-center pt-6">
-                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                  Page {financePage}
-                </span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setFinancePage(prev => Math.max(prev - 1, 1))}
-                    disabled={financePage === 1}
-                    className="px-3 py-1.5 bg-[#fdfdfb] border border-[#e7e5dc] hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <button 
-                    onClick={() => setFinancePage(prev => prev + 1)}
-                    disabled={finance.length < 100}
-                    className="px-3 py-1.5 bg-[#fdfdfb] border border-[#e7e5dc] hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
-                  >
-                    Next
-                  </button>
+                {/* Pagination footer bar inside panel */}
+                <div className="agri-crop-filter-bar px-5 pb-5">
+                  <span>Page {financePage}</span>
+                  <button onClick={() => setFinancePage(p => Math.max(1, p - 1))} disabled={financePage === 1}>Previous</button>
+                  <button onClick={() => setFinancePage(p => p + 1)} disabled={finance.length < 100}>Next</button>
                 </div>
-              </div>
+              </section>
             </div>
           )}
 
           {/* ───────────────── VIEW: CARE & HEALTH PORTAL ───────────────── */}
           {activeTab === 'tasks' && (
-            <div className="space-y-6 animate-fade-in">
-              <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-5 ${
-                isDark ? 'border-slate-800' : 'border-slate-200'
-              }`}>
-                <div>
-                  <h3 className="text-base md:text-lg font-black">Crop Care & Health Portal</h3>
-                  <p className="text-slate-500 text-xs">Assign and monitor soil checkups, crop watering schedules, and organic pesticide treatments.</p>
+            <div className="space-y-6 animate-fade-in flex-1">
+              <div className="agri-page-hero">
+                <div className="agri-page-title">
+                  <div className="agri-title-icon"><HeartPulse size={30}/></div>
+                  <div>
+                    <h2>Crop Care & Health Portal</h2>
+                    <p>Assign and monitor soil checkups, crop watering schedules, and organic pesticide treatments.</p>
+                  </div>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <select 
-                    className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 ${
-                      isDark ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
-                    }`}
-                    value={taskFilter}
-                    onChange={e => setTaskFilter(e.target.value)}
+                {userRole === 'admin' && (
+                  <button 
+                    onClick={() => { setEditingTask(null); setTaskForm({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' }); setShowTaskModal(true); }}
+                    className="agri-primary-action animate-fade-in"
                   >
-                    <option value="all">All Assignments</option>
-                    <option value="Pending">Pending / In-Progress</option>
-                    <option value="Completed">Completed Duties</option>
-                  </select>
-                  {userRole === 'admin' && (
-                    <button 
-                      onClick={() => { setEditingTask(null); setTaskForm({ title: '', due_date: '', assigned_to: '', priority: 'Medium', notes: '' }); setShowTaskModal(true); }}
-                      className="bg-farm-600 hover:bg-farm-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer transition-transform hover:scale-105 ml-auto shrink-0 animate-fade-in"
+                    <Plus size={19} /> Schedule Care
+                  </button>
+                )}
+              </div>
+
+              {/* Tasks Roster Board inside an .agri-panel */}
+              <section className="agri-panel">
+                <div className="agri-panel-heading">
+                  <div>
+                    <h3><HeartPulse size={21}/> Duty Care Roster</h3>
+                    <p>Monitor fertilizer applications, soil checkups, and water rosters.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <select 
+                      className={`border rounded-lg text-xs px-3 py-2 outline-none focus:border-farm-500 cursor-pointer ${
+                        isDark ? 'bg-[#0f172a] border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                      }`}
+                      value={taskFilter}
+                      onChange={e => setTaskFilter(e.target.value)}
                     >
-                      <Plus size={16} /> Schedule Care
-                    </button>
-                  )}
+                      <option value="all">All Assignments</option>
+                      <option value="Pending">Pending / In-Progress</option>
+                      <option value="Completed">Completed Duties</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              {/* Tasks Roster Board */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tasks.length === 0 ? (
-                  <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                  }`}>
-                    Duty care roster is currently clean.
-                  </div>
-                ) : filteredTasks.length === 0 ? (
-                  <div className={`col-span-full border py-12 rounded-2xl text-center text-slate-500 text-xs font-medium ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                  }`}>
-                    No duty assignments found matching this status.
-                  </div>
-                ) : filteredTasks.map((t, idx) => (
-                  <div key={t._id} className={`border rounded-2xl p-5 shadow-sm flex flex-col justify-between ${
-                    isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-[#fdfdfb] border-[#e7e5dc]'
-                  }`} style={{
-                    borderLeft: `4px solid ${t.status === 'Completed' ? '#475569' : t.priority === 'High' ? '#ef4444' : '#22c55e'}`,
-                    opacity: t.status === 'Completed' ? 0.6 : 1,
-                    animation: 'fadeIn 0.3s ease-out',
-                    animationDelay: `${idx * 0.05}s`
-                  }}>
-                    <div className="space-y-4">
-                      {/* Priority Tag & Completion Checkbox */}
-                      <div className="flex justify-between items-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                          t.priority === 'High' ? 'bg-red-950 text-red-400 border border-red-900/20' :
-                          t.priority === 'Low' ? 'bg-slate-800 text-slate-500 dark:text-slate-400' :
-                          'bg-farm-900/20 text-farm-600 dark:text-farm-400 border border-farm-900/30'
-                        }`}>{t.priority} Priority</span>
-                        
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
-                          t.status === 'Completed' ? 'bg-slate-800 text-slate-500' : 'bg-farm-900/20 text-farm-600 dark:text-farm-400 border border-farm-900/30'
-                        }`}>{t.status}</span>
-                      </div>
-
-                      {/* Main Title */}
-                      <div>
-                        <h4 className={`text-sm md:text-base font-black ${t.status === 'Completed' ? 'line-through text-slate-500' : isDark ? 'text-white' : 'text-slate-900'}`}>{t.title}</h4>
-                        {t.notes && <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{t.notes}</p>}
-                      </div>
-
-                      {/* Info lines */}
-                      <div className={`border-t pt-3 space-y-1.5 text-xs ${
-                        isDark ? 'border-slate-800 text-slate-500 dark:text-slate-400' : 'border-slate-200/60 text-slate-500'
+                <div className="agri-crop-grid">
+                  {tasks.length === 0 ? (
+                    <div className="agri-empty-crops">
+                      <div><HeartPulse size={36}/></div>
+                      <h4>Duty care roster is clean</h4>
+                      <p>No active care schedules or tasks registered in the database.</p>
+                    </div>
+                  ) : filteredTasks.length === 0 ? (
+                    <div className="agri-empty-crops">
+                      <div><HeartPulse size={36}/></div>
+                      <h4>No duties match filter</h4>
+                      <p>Try switching to another status or scheduled care assignment filter.</p>
+                    </div>
+                  ) : filteredTasks.map((t, idx) => (
+                    <article key={t._id} className="agri-crop-card" style={{
+                      animationDelay: `${idx * .06}s`,
+                      opacity: t.status === 'Completed' ? 0.75 : 1
+                    }}>
+                      {/* Card Header styling matching Crop Manager but using icons */}
+                      <div className={`h-24 relative flex items-center justify-center ${
+                        t.status === 'Completed' 
+                          ? 'bg-slate-200 dark:bg-slate-800 text-slate-500' 
+                          : t.priority === 'High' 
+                            ? 'bg-red-500 dark:bg-red-900/30 text-white' 
+                            : 'bg-farm-600 dark:bg-farm-900/30 text-white'
                       }`}>
-                        <p className="flex items-center gap-2"><Users size={12} className="text-slate-500 dark:text-slate-400" /> Worker: <span className="font-semibold text-slate-700 dark:text-slate-200">{t.assigned_to || 'Broadcast Duty'}</span></p>
-                        <p className="flex items-center gap-2"><Calendar size={12} className="text-slate-500 dark:text-slate-400" /> Due Date: <span className="font-semibold text-slate-700 dark:text-slate-200">{t.due_date || 'None / Ongoing'}</span></p>
+                        <span className={`agri-status ${t.status === 'Completed' ? 'completed' : t.status === 'Pending' ? 'growing' : 'harvesting'}`}>{t.status}</span>
+                        <span className="w-12 h-12 rounded-full flex items-center justify-center bg-white/10 backdrop-blur-md text-white border border-white/25 shadow-sm">
+                          {t.priority === 'High' ? <AlertTriangle size={24} /> : <HeartPulse size={24} />}
+                        </span>
                       </div>
-                    </div>
 
-                    {/* Footer Actions */}
-                    <div className={`flex justify-between items-center mt-5 pt-3 border-t ${
-                      isDark ? 'border-slate-800/60' : 'border-slate-200/60'
-                    }`}>
-                      {t.status === 'Pending' ? (
-                        <button 
-                          onClick={() => handleCompleteTask(t._id)}
-                          className="text-xs text-farm-500 hover:text-farm-600 dark:text-farm-400 font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          <CheckCircle size={14} /> Complete
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1"><CheckCircle size={12} /> Duties Completed</span>
-                      )}
-                      
-                      {userRole === 'admin' && (
-                        <div className="flex gap-1">
-                          <button onClick={() => handleEditTask(t)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-farm-500 rounded-lg transition-colors cursor-pointer" title="Edit Task">
-                            <Edit3 size={14} />
-                          </button>
-                          <button onClick={() => handleDeleteTask(t._id)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer" title="Delete Task">
-                            <Trash2 size={14} />
-                          </button>
+                      <div className="agri-crop-card-body">
+                        {/* Title & Priority Tag */}
+                        <div className="agri-crop-name">
+                          <div>
+                            <h4 className={`${t.status === 'Completed' ? 'line-through text-slate-400' : ''}`}>{t.title}</h4>
+                            <p className="font-extrabold uppercase text-[9px] tracking-wider text-slate-500 mt-1">
+                              {t.priority} Priority
+                            </p>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
 
-              {/* Tasks Pagination Controls */}
-              <div className="flex justify-between items-center pt-6">
-                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                  Page {tasksPage}
-                </span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setTasksPage(prev => Math.max(prev - 1, 1))}
-                    disabled={tasksPage === 1}
-                    className="px-3 py-1.5 bg-[#fdfdfb] border border-[#e7e5dc] hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <button 
-                    onClick={() => setTasksPage(prev => prev + 1)}
-                    disabled={tasks.length < 100}
-                    className="px-3 py-1.5 bg-[#fdfdfb] border border-[#e7e5dc] hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50"
-                  >
-                    Next
-                  </button>
+                        {/* Notes / Description */}
+                        {t.notes && (
+                          <p className={`text-[11px] line-clamp-2 p-2 rounded-lg border my-3 ${
+                            isDark ? 'text-slate-400 bg-slate-900/40 border-slate-800' : 'text-slate-600 bg-slate-50 border-slate-200'
+                          }`}>
+                            {t.notes}
+                          </p>
+                        )}
+
+                        {/* Assignment Details */}
+                        <div className="agri-crop-stats pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                          <span><Users size={14}/> {t.assigned_to || 'Broadcast Duty'}</span>
+                          <span><Calendar size={14}/> {t.due_date || 'Ongoing care'}</span>
+                        </div>
+
+                        {/* Actions Footer */}
+                        <div className="agri-crop-actions border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-3">
+                          {t.status === 'Pending' ? (
+                            <button 
+                              onClick={() => handleCompleteTask(t._id)}
+                              className="agri-detail-btn flex items-center gap-1.5"
+                            >
+                              <CheckCircle size={13} /> Complete
+                            </button>
+                          ) : (
+                            <span className="flex-1 text-center py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-500 font-extrabold text-[10px] uppercase tracking-wider">
+                              ✓ Done
+                            </span>
+                          )}
+
+                          {userRole === 'admin' && (
+                            <>
+                              <button onClick={() => handleEditTask(t)} className="agri-mini-icon" title="Edit Task">
+                                <Edit3 size={14} />
+                              </button>
+                              <button onClick={() => handleDeleteTask(t._id)} className="agri-mini-icon danger" title="Delete Task">
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  ))}
                 </div>
-              </div>
+
+                {/* Pagination footer inside panel */}
+                <div className="agri-crop-filter-bar px-5 pb-5">
+                  <span>Page {tasksPage}</span>
+                  <button onClick={() => setTasksPage(p => Math.max(1, p - 1))} disabled={tasksPage === 1}>Previous</button>
+                  <button onClick={() => setTasksPage(p => p + 1)} disabled={tasks.length < 100}>Next</button>
+                </div>
+              </section>
             </div>
           )}
 

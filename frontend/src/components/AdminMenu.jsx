@@ -741,10 +741,10 @@ export default function AdminMenu({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="relative w-full max-w-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden text-slate-800 dark:text-slate-100"
+            className="relative w-full max-w-2xl bg-[#fffefb] dark:bg-[#0d1a11] border border-[#e6e6de] dark:border-[#203528] rounded-[20px] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden text-slate-800 dark:text-slate-100"
           >
             {/* Header */}
-            <div className="flex items-start justify-between p-5 border-b border-slate-200 dark:border-slate-800 shrink-0">
+            <div className="flex items-start justify-between p-5 border-b border-[#e6e6de] dark:border-[#203528] shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-farm-900/20 text-farm-500 dark:text-farm-400 rounded-xl">
                   {isAdmin ? <Settings size={20} /> : <Users size={20} />}
@@ -767,7 +767,7 @@ export default function AdminMenu({
             </div>
 
             {/* Inner Tabs Navigation */}
-            <div className="flex items-center gap-1.5 overflow-x-auto border-b border-slate-200 dark:border-slate-800 px-5 py-2.5 shrink-0 select-none custom-scrollbar bg-slate-50 dark:bg-slate-900/40">
+            <div className="flex items-center gap-1.5 overflow-x-auto border-b border-[#e6e6de] dark:border-[#203528] px-5 py-2.5 shrink-0 select-none custom-scrollbar bg-[#f7f5ed] dark:bg-[#0a140d]/40">
               {filteredTabs.map(({ id, icon: Icon, label }) => {
                 const active = activeTab === id;
                 return (
@@ -795,10 +795,16 @@ export default function AdminMenu({
                 <div className="space-y-6 animate-fade-in">
                   
                   {/* Theme Presets */}
-                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                      <Sun size={14} /> Active Theme Presets
-                    </h4>
+                  <div className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-[#e6e6de] dark:border-[#203528]">
+                      <div className="p-1.5 bg-farm-900/10 text-farm-600 dark:text-farm-400 rounded-lg">
+                        <Sun size={14} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Active Theme Presets</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Configure light/dark mode presets.</p>
+                      </div>
+                    </div>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => onToggleDark(false)}
@@ -824,10 +830,16 @@ export default function AdminMenu({
                   </div>
 
                   {/* Typography Settings */}
-                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                      <Type size={14} /> Typography Font Scaling
-                    </h4>
+                  <div className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-[#e6e6de] dark:border-[#203528]">
+                      <div className="p-1.5 bg-farm-900/10 text-farm-600 dark:text-farm-400 rounded-lg">
+                        <Type size={14} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Typography Font Scaling</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Adjust text scales for better legibility.</p>
+                      </div>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {['sm', 'base', 'md', 'lg'].map(size => (
                         <button 
@@ -847,10 +859,16 @@ export default function AdminMenu({
 
                   {/* Administrator Profile Email Form */}
                   {isAdmin && (
-                    <form onSubmit={handleUpdateEmail} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
-                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                        <Mail size={14} /> Administrator Email
-                      </h4>
+                    <form onSubmit={handleUpdateEmail} className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b border-[#e6e6de] dark:border-[#203528]">
+                        <div className="p-1.5 bg-farm-900/10 text-farm-600 dark:text-farm-400 rounded-lg">
+                          <Mail size={14} />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Administrator Email</h4>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Verify and update system email address.</p>
+                        </div>
+                      </div>
                       {emailMsg && (
                         <div className={`p-3 rounded-lg text-xs border ${
                           emailMsg.type === 'ok' ? 'bg-farm-950/40 border-farm-500 text-farm-300' : 'bg-red-950/40 border-red-500 text-red-300'
@@ -864,7 +882,7 @@ export default function AdminMenu({
                           <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Email Address</label>
                           <input 
                             type="email"
-                            className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                            className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                             placeholder="admin@farm.com"
                             value={myEmail}
                             onChange={e => setMyEmail(e.target.value)}
@@ -885,7 +903,7 @@ export default function AdminMenu({
                         <input 
                           type="text"
                           maxLength={6}
-                          className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                          className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                           placeholder="e.g. 123456"
                           value={emailCode}
                           onChange={e => setEmailCode(e.target.value)}
@@ -904,11 +922,17 @@ export default function AdminMenu({
 
                   {/* Account Password change Form */}
                   {isAdmin ? (
-                    <form onSubmit={handleChangePw} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
-                      <div className="flex justify-between items-center flex-wrap gap-2">
-                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                          <Lock size={14} /> Change Access Password
-                        </h4>
+                    <form onSubmit={handleChangePw} className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-4">
+                      <div className="flex justify-between items-center flex-wrap gap-2 pb-2 border-b border-[#e6e6de] dark:border-[#203528]">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 bg-farm-900/10 text-farm-600 dark:text-farm-400 rounded-lg">
+                            <Lock size={14} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Change Access Password</h4>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Configure a strong credential password.</p>
+                          </div>
+                        </div>
                         <button 
                           type="button"
                           onClick={() => {
@@ -937,7 +961,7 @@ export default function AdminMenu({
                               <input 
                                 required
                                 type="password"
-                                className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                                 placeholder="••••••••"
                                 value={curPw}
                                 onChange={e => setCurPw(e.target.value)}
@@ -948,7 +972,7 @@ export default function AdminMenu({
                               <input 
                                 required
                                 type="password"
-                                className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                                 placeholder="Min 6 characters"
                                 value={newPw}
                                 onChange={e => setNewPw(e.target.value)}
@@ -962,7 +986,7 @@ export default function AdminMenu({
                               <input 
                                 required
                                 type="password"
-                                className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                                className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                                 placeholder="Min 6 characters"
                                 value={newPw}
                                 onChange={e => setNewPw(e.target.value)}
@@ -976,7 +1000,7 @@ export default function AdminMenu({
                                   required
                                   type="text"
                                   maxLength={6}
-                                  className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white text-xs outline-none focus:border-farm-500 transition-colors"
+                                  className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                                   placeholder="e.g. 123456"
                                   value={pwCode}
                                   onChange={e => setPwCode(e.target.value)}
@@ -1004,8 +1028,8 @@ export default function AdminMenu({
                       </button>
                     </form>
                   ) : (
-                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 flex items-center gap-3 text-slate-500 dark:text-slate-400">
-                      <Lock size={18} />
+                    <div className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                      <Lock size={18} className="text-farm-500" />
                       <p className="text-xs font-semibold leading-relaxed">
                         Your password can only be updated or reset by the System Administrator.
                       </p>
@@ -1020,16 +1044,22 @@ export default function AdminMenu({
                   {isAdmin ? (
                     <>
                       {/* Register Worker Account */}
-                      <form onSubmit={handleAddWorker} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
-                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                          <UserPlus size={14} /> Register New Worker Account
-                        </h4>
+                      <form onSubmit={handleAddWorker} className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-[#e6e6de] dark:border-[#203528]">
+                          <div className="p-1.5 bg-farm-900/10 text-farm-600 dark:text-farm-400 rounded-lg">
+                            <UserPlus size={14} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Register New Operative</h4>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Add authorized worker credentials.</p>
+                          </div>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Username *</label>
                             <input 
                               required
-                              className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                              className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                               placeholder="e.g. johan"
                               value={workerForm.username}
                               onChange={e => setWorkerForm({...workerForm, username: e.target.value})}
@@ -1040,7 +1070,7 @@ export default function AdminMenu({
                             <input 
                               required
                               type="password"
-                              className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                              className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                               placeholder="Min 6 characters"
                               value={workerForm.password}
                               onChange={e => setWorkerForm({...workerForm, password: e.target.value})}
@@ -1054,7 +1084,7 @@ export default function AdminMenu({
                             <input 
                               required
                               type="email"
-                              className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                              className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                               placeholder="e.g. admin_email@farm.com"
                               value={workerForm.email || ''}
                               onChange={e => setWorkerForm({...workerForm, email: e.target.value})}
@@ -1065,7 +1095,7 @@ export default function AdminMenu({
                         <div>
                           <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider font-semibold">Access Level Role</label>
                           <select 
-                            className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white font-medium cursor-pointer"
+                            className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-2 text-xs outline-none focus:border-farm-500 font-bold cursor-pointer transition-all"
                             value={workerForm.role}
                             onChange={e => setWorkerForm({...workerForm, role: e.target.value})}
                           >
@@ -1142,7 +1172,7 @@ export default function AdminMenu({
                                       <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">New Username</label>
                                       <input 
                                         type="text"
-                                        className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white font-medium"
+                                        className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 transition-all font-semibold"
                                         placeholder="New username"
                                         value={workerNewUsername}
                                         onChange={e => setWorkerNewUsername(e.target.value)}
@@ -1152,7 +1182,7 @@ export default function AdminMenu({
                                       <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">New Password (Optional)</label>
                                       <input 
                                         type="password"
-                                        className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                                        className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                                         placeholder="Leave blank to keep current"
                                         value={workerNewPw}
                                         onChange={e => setWorkerNewPw(e.target.value)}
@@ -1165,7 +1195,7 @@ export default function AdminMenu({
                                       <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Your Admin Current Password *</label>
                                       <input 
                                         type="password"
-                                        className="w-full bg-white dark:bg-[#1a2333] border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 text-slate-900 dark:text-white"
+                                        className="w-full bg-slate-100 border border-slate-200 text-slate-900 dark:bg-[#1e293b] dark:border-slate-700 dark:text-white rounded-lg px-3 py-1.5 text-xs outline-none focus:border-farm-500 transition-all font-medium"
                                         placeholder="Enter your password to authorize"
                                         value={adminConfirmPassword}
                                         onChange={e => setAdminConfirmPassword(e.target.value)}
@@ -1201,10 +1231,16 @@ export default function AdminMenu({
                   {isAdmin ? (
                     <>
                     <form onSubmit={handleSaveAutomations} className="space-y-6">
-                      <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
-                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                          <Clock className="text-farm-500" size={14} /> Automated Email Alert & Digests
-                        </h4>
+                      <div className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-[#e6e6de] dark:border-[#203528]">
+                          <div className="p-1.5 bg-farm-900/10 text-farm-600 dark:text-farm-400 rounded-lg">
+                            <Clock size={14} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider font-extrabold">Automated Alert Digests</h4>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Configure scheduled automatic email reports.</p>
+                          </div>
+                        </div>
                         <p className="text-xs text-slate-500 leading-relaxed">Configure scheduled system tasks (cronjobs) that automatically calculate harvest yields, ledger flows, and scheduled water/fertilizer rosters, emailing them directly as a PDF digest.</p>
                         
                         {autoMsg && (
@@ -1442,10 +1478,16 @@ export default function AdminMenu({
               {/* ─── TAB: REPORTS ─── */}
               {activeTab === 'reports' && (
                 <div className="space-y-6 animate-fade-in">
-                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/20 space-y-4">
-                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                      <FileText className="text-farm-500" size={14} /> Official Farm Export Center
-                    </h4>
+                  <div className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-[#e6e6de] dark:border-[#203528]">
+                      <div className="p-1.5 bg-farm-900/10 text-farm-600 dark:text-farm-400 rounded-lg">
+                        <FileText size={14} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Official Farm Export Center</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Generate and download PDF agricultural reports.</p>
+                      </div>
+                    </div>
                     <p className="text-xs text-slate-500 leading-relaxed">Download and export legal PDF statements containing crop-growing phase analytics, transactional cashflows ledger, and care roster details suitable for printing or physical filing.</p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
@@ -1519,7 +1561,7 @@ export default function AdminMenu({
                   {isAdmin ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Export Backup File */}
-                      <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
+                      <div className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-3">
                         <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">Database Backup Export</h5>
                         <p className="text-xs text-slate-500 leading-relaxed">Download a single-file atomic JSON backup containing all crops, financial logs, duties rosters, and worker lists.</p>
                       <button onClick={handleExportBackup} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white text-xs font-bold rounded-lg flex items-center gap-2 transition-all cursor-pointer">
@@ -1528,7 +1570,7 @@ export default function AdminMenu({
                       </div>
 
                       {/* Upload & Restore database */}
-                      <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900/10 dark:bg-[#151d30]/30 space-y-3">
+                      <div className="p-5 rounded-[17px] border border-[#e6e6de] dark:border-[#203528] bg-[#fffefb]/60 dark:bg-[#0a140d]/40 shadow-xs space-y-3">
                         <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">Database Recovery Restore</h5>
                         <p className="text-xs text-slate-500 leading-relaxed">Restore all databases atomically from a previously downloaded AgriFarm backup file. Warning: This clears all existing tables.</p>
                         <label className="inline-flex items-center gap-2 px-4 py-2 bg-farm-900/30 hover:bg-farm-900/50 text-farm-500 dark:text-farm-300 border border-farm-200 dark:border-farm-800 hover:border-farm-700 text-xs font-bold rounded-lg cursor-pointer transition-all">
