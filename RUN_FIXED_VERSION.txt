@@ -1,0 +1,16 @@
+USMAN AGRI FARM - FIXED UI VERSION
+
+This version fixes:
+- duplicate/stale header appearance caused by old PWA caches
+- duplicate hidden navigation
+- multiple active navbar items
+- navbar active state for Fields, Seeds, Care, Irrigation and Reports
+
+LOCAL TEST:
+1. Open a new terminal in frontend.
+2. npm install
+3. npm run dev
+4. Open http://localhost:3030
+5. If an old tab is open, close it completely and open the new localhost page.
+
+The old dist folder was intentionally removed because it contained stale compiled UI. Run npm run build when you need a fresh production dist.
