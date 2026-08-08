@@ -1395,11 +1395,65 @@ function App() {
               </div>
 
               <div className="agri-kpi-grid">
-                <div className="agri-kpi-card"><span className="agri-kpi-icon wheat"><Sprout size={22}/></span><div><small>Total Cropped Area</small><strong>{crops.length ? `${crops.length}` : '0'} <em>{crops.length === 1 ? 'Crop' : 'Crops'}</em></strong><p className="up">↗ Live register</p></div></div>
-                <div className="agri-kpi-card"><span className="agri-kpi-icon green"><Leaf size={22}/></span><div><small>Total Production (Est.)</small><strong>{(crops.reduce((n,c)=>n+(Number(c.yield_kg)||0),0)/1000).toFixed(1)} <em>Ton</em></strong><p className="up">↗ From crop records</p></div></div>
-                <div className="agri-kpi-card"><span className="agri-kpi-icon green"><Sprout size={22}/></span><div><small>Active Crops</small><strong>{crops.filter(c => ['Growing','Planted','Harvesting'].includes(c.status)).length}</strong><p>{crops.slice(0,3).map(c=>c.name).filter(Boolean).join(', ') || 'No crops registered'}</p></div></div>
-                <div className="agri-kpi-card"><span className="agri-kpi-icon blue"><Droplets size={22}/></span><div><small>Care Duties</small><strong>{tasks.filter(t=>t.status==='Pending').length}</strong><p>This Month</p></div></div>
-                <div className="agri-kpi-card"><span className="agri-kpi-icon gold"><FileText size={22}/></span><div><small>Ledger Entries</small><strong>{finance.length}</strong><p>{finance.length ? 'Recorded' : 'No entries yet'}</p></div></div>
+                <div 
+                  onClick={() => setModal('crops_planted')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
+                  <span className="agri-kpi-icon wheat"><Sprout size={22}/></span>
+                  <div>
+                    <small>Total Cropped Area</small>
+                    <strong>{crops.length ? `${crops.length}` : '0'} <em>{crops.length === 1 ? 'Crop' : 'Crops'}</em></strong>
+                    <p className="up">↗ Live register</p>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => setModal('crops_planted')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
+                  <span className="agri-kpi-icon green"><Leaf size={22}/></span>
+                  <div>
+                    <small>Total Production (Est.)</small>
+                    <strong>{(crops.reduce((n,c)=>n+(Number(c.yield_kg)||0),0)/1000).toFixed(1)} <em>Ton</em></strong>
+                    <p className="up">↗ From crop records</p>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => setModal('crops_planted')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
+                  <span className="agri-kpi-icon green"><Sprout size={22}/></span>
+                  <div>
+                    <small>Active Crops</small>
+                    <strong>{crops.filter(c => ['Growing','Planted','Harvesting'].includes(c.status)).length}</strong>
+                    <p>{crops.slice(0,3).map(c=>c.name).filter(Boolean).join(', ') || 'No crops registered'}</p>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => setModal('pending_duties')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
+                  <span className="agri-kpi-icon blue"><Droplets size={22}/></span>
+                  <div>
+                    <small>Care Duties</small>
+                    <strong>{tasks.filter(t=>t.status==='Pending').length}</strong>
+                    <p>This Month</p>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => setModal('ledger_profit')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
+                  <span className="agri-kpi-icon gold"><FileText size={22}/></span>
+                  <div>
+                    <small>Ledger Entries</small>
+                    <strong>{finance.length}</strong>
+                    <p>{finance.length ? 'Recorded' : 'No entries yet'}</p>
+                  </div>
+                </div>
               </div>
 
               <section className="agri-panel agri-my-crops">
@@ -1535,7 +1589,10 @@ function App() {
 
               {/* Financial Breakdown Panel */}
               <div className="agri-kpi-grid">
-                <div className="agri-kpi-card">
+                <div 
+                  onClick={() => setModal('ledger_profit')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
                   <span className="agri-kpi-icon green"><TrendingUp size={22}/></span>
                   <div>
                     <small>Gross Income</small>
@@ -1543,7 +1600,10 @@ function App() {
                     <p className="up">↗ Live revenue</p>
                   </div>
                 </div>
-                <div className="agri-kpi-card">
+                <div 
+                  onClick={() => setModal('ledger_profit')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
                   <span className="agri-kpi-icon wheat"><TrendingDown size={22}/></span>
                   <div>
                     <small>Expenditures</small>
@@ -1551,7 +1611,10 @@ function App() {
                     <p className="down text-red-500">↘ Direct outlays</p>
                   </div>
                 </div>
-                <div className="agri-kpi-card">
+                <div 
+                  onClick={() => setModal('ledger_profit')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
                   <span className={`agri-kpi-icon ${netProfit >= 0 ? 'green' : 'blue'}`}><Scale size={22}/></span>
                   <div>
                     <small>Net Profit Margin</small>
@@ -1606,7 +1669,11 @@ function App() {
                       ) : filteredFinance.map(f => {
                         const linkedCrop = crops.find(c => c._id === f.crop_id);
                         return (
-                          <tr key={f._id} className="hover:bg-slate-100/40 dark:hover:bg-slate-900/30 transition-colors animate-fade-in">
+                          <tr 
+                            key={f._id} 
+                            onClick={() => setSelectedFinance(f)}
+                            className="hover:bg-slate-100/40 dark:hover:bg-slate-900/30 transition-colors animate-fade-in cursor-pointer"
+                          >
                             <td className="px-4 py-4 text-slate-500 whitespace-nowrap">{f.date}</td>
                             <td className="px-4 py-4">
                               <div className="font-extrabold text-slate-800 dark:text-slate-100">{f.category}</div>
@@ -1634,10 +1701,10 @@ function App() {
                             <td className="px-4 py-4 text-right whitespace-nowrap">
                               {userRole === 'admin' ? (
                                 <div className="inline-flex gap-1 justify-end">
-                                  <button onClick={() => handleEditFinance(f)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-farm-500 rounded-lg cursor-pointer transition-colors" title="Edit Log">
+                                  <button onClick={(e) => { e.stopPropagation(); handleEditFinance(f); }} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-farm-500 rounded-lg cursor-pointer transition-colors" title="Edit Log">
                                     <Edit3 size={14} />
                                   </button>
-                                  <button onClick={() => handleDeleteFinance(f._id)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-400 rounded-lg cursor-pointer transition-colors" title="Delete Log">
+                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteFinance(f._id); }} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-400 rounded-lg cursor-pointer transition-colors" title="Delete Log">
                                     <Trash2 size={14} />
                                   </button>
                                 </div>
@@ -1719,10 +1786,15 @@ function App() {
                       <p>Try switching to another status or scheduled care assignment filter.</p>
                     </div>
                   ) : filteredTasks.map((t, idx) => (
-                    <article key={t._id} className="agri-crop-card" style={{
-                      animationDelay: `${idx * .06}s`,
-                      opacity: t.status === 'Completed' ? 0.75 : 1
-                    }}>
+                    <article 
+                      key={t._id} 
+                      className="agri-crop-card cursor-pointer hover:scale-[1.01] transition-transform" 
+                      style={{
+                        animationDelay: `${idx * .06}s`,
+                        opacity: t.status === 'Completed' ? 0.75 : 1
+                      }}
+                      onClick={() => setSelectedTask(t)}
+                    >
                       {/* Card Header styling matching Crop Manager but using icons */}
                       <div className={`h-24 relative flex items-center justify-center ${
                         t.status === 'Completed' 
@@ -1767,7 +1839,7 @@ function App() {
                         <div className="agri-crop-actions border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-3">
                           {t.status === 'Pending' ? (
                             <button 
-                              onClick={() => handleCompleteTask(t._id)}
+                              onClick={(e) => { e.stopPropagation(); handleCompleteTask(t._id); }}
                               className="agri-detail-btn flex items-center gap-1.5"
                             >
                               <CheckCircle size={13} /> Complete
@@ -1780,10 +1852,10 @@ function App() {
 
                           {userRole === 'admin' && (
                             <>
-                              <button onClick={() => handleEditTask(t)} className="agri-mini-icon" title="Edit Task">
+                              <button onClick={(e) => { e.stopPropagation(); handleEditTask(t); }} className="agri-mini-icon" title="Edit Task">
                                 <Edit3 size={14} />
                               </button>
-                              <button onClick={() => handleDeleteTask(t._id)} className="agri-mini-icon danger" title="Delete Task">
+                              <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(t._id); }} className="agri-mini-icon danger" title="Delete Task">
                                 <Trash2 size={14} />
                               </button>
                             </>
@@ -1836,7 +1908,10 @@ function App() {
 
               {/* Period Stats Grid using .agri-kpi-grid */}
               <div className="agri-kpi-grid">
-                <div className="agri-kpi-card">
+                <div 
+                  onClick={() => setModal('ledger_profit')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
                   <span className="agri-kpi-icon green"><TrendingUp size={22}/></span>
                   <div>
                     <small>Period Income</small>
@@ -1845,7 +1920,10 @@ function App() {
                   </div>
                 </div>
 
-                <div className="agri-kpi-card">
+                <div 
+                  onClick={() => setModal('ledger_profit')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
                   <span className="agri-kpi-icon wheat"><TrendingDown size={22}/></span>
                   <div>
                     <small>Period Expense</small>
@@ -1854,7 +1932,10 @@ function App() {
                   </div>
                 </div>
 
-                <div className="agri-kpi-card">
+                <div 
+                  onClick={() => setModal('ledger_profit')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
                   <span className={`agri-kpi-icon ${periodNet >= 0 ? 'green' : 'blue'}`}><Scale size={22}/></span>
                   <div>
                     <small>Operating Profit</small>
@@ -1865,7 +1946,10 @@ function App() {
                   </div>
                 </div>
 
-                <div className="agri-kpi-card">
+                <div 
+                  onClick={() => setModal('ledger_profit')}
+                  className="agri-kpi-card cursor-pointer hover:scale-[1.02] transition-transform"
+                >
                   <span className="agri-kpi-icon gold"><CheckCircle size={22}/></span>
                   <div>
                     <small>Operating Margin</small>
